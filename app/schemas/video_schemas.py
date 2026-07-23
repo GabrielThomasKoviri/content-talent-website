@@ -38,6 +38,8 @@ class VideoResponse(BaseModel):
     is_playable: bool
     playback_url: Optional[str] = None
     main_thumbnail_url: Optional[str] = None
+    caption_url: Optional[str] = None
+    caption_language: Optional[str] = "en"
     alt_thumbnail_urls: List[str] = []
     created_at: Optional[datetime] = None
 

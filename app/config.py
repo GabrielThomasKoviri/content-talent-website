@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     BUNNY_PULL_ZONE_URL: str = ""
     JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
+    STATIC_API_KEY: str = "talentsea_secret_api_key_2026"
 
     class Config:
         env_file = ".env"
