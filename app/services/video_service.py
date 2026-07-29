@@ -164,7 +164,7 @@ class VideoService:
         expiration_timestamp = int(time.time()) + 86400
         signature = generate_tus_signature(
             library_id=library_id,
-            api_key=api_key,
+            bunny_api_key=api_key,
             expiration_time=expiration_timestamp,
             video_id=bunny_video_id
         )
