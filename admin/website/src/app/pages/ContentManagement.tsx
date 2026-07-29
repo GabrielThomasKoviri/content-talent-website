@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import Hls from "hls.js";
+import * as tus from "tus-js-client";
 import {
   getVideos, getVideoDetails, initiateVideoUpload, updateVideo,
   deleteVideo, bulkDeleteVideos, publishVideo, scheduleVideo,
-  uploadThumbnail, getPlaylists, createPlaylist, updatePlaylist,
+  uploadThumbnail, selectMainThumbnail, getPlaylists, createPlaylist, updatePlaylist,
   deletePlaylist, addVideosToPlaylist, removeVideoFromPlaylist,
   bulkRemoveVideosFromPlaylist, uploadPlaylistBanner, getPlaylistVideos, ApiVideo, ApiPlaylist
 } from "../services/apiService";
@@ -31,7 +33,7 @@ import {
   Plus, Search, MoreVertical, Eye, Edit, Trash2, Upload,
   Video, FileText, X, Calendar, Clock, ListVideo,
   ChevronDown, ImagePlus, SlidersHorizontal, Play,
-  ArrowLeft, Pencil, CheckSquare, RefreshCw, Loader2, AlertCircle
+  ArrowLeft, Pencil, CheckSquare, RefreshCw, Loader2, AlertCircle, FolderOpen, CheckCircle
 } from "lucide-react";
 
 
@@ -51,6 +53,7 @@ type Content = {
   tags: string[];
   thumbnailUrl?: string;
   videoUrl?: string;
+  encodeProgress?: number;
 };
 
 type Playlist = {
@@ -112,22 +115,79 @@ function TagInput({ tags, setTags }: { tags: string[]; setTags: (t: string[]) =>
       ))}
       <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey}
         placeholder={tags.length === 0 ? "Add tags (press Enter or Space)..." : ""}
-        className="flex-1 min-w-[140px] text-sm outline-none bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400" />
+        className="flex-1 min-w-[140px] text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400 font-medium" />
     </div>
   );
 }
 
-function ThumbnailSlot({ label, onSelect }: { label: string; onSelect?: (file: File) => void }) {
+function ThumbnailSlot({
+  label,
+  existingUrl,
+  isMain,
+  onSelect,
+  onMakePrimary,
+}: {
+  label: string;
+  existingUrl?: string;
+  isMain?: boolean;
+  onSelect?: (file: File) => void;
+  onMakePrimary?: () => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(existingUrl || null);
+
+  useEffect(() => {
+    setPreview(existingUrl || null);
+  }, [existingUrl]);
+
   return (
-    <label className="border-2 border-dashed border-slate-300 rounded-xl p-3 text-center hover:border-purple-500 transition-colors cursor-pointer group block bg-slate-50">
-      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-        if (e.target.files && e.target.files[0] && onSelect) {
-          onSelect(e.target.files[0]);
-        }
-      }} />
-      <ImagePlus className="h-6 w-6 mx-auto text-slate-400 group-hover:text-purple-600 mb-1" />
-      <p className="text-xs text-slate-500 group-hover:text-purple-600 font-medium">{label}</p>
-    </label>
+    <div className={`relative border-2 ${isMain ? "border-purple-500 bg-purple-50/40" : "border-dashed border-slate-300 bg-slate-50"} rounded-xl overflow-hidden text-center transition-colors flex flex-col items-center justify-center p-2`}>
+      <label className="cursor-pointer block w-full group">
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+              const file = e.target.files[0];
+              setPreview(URL.createObjectURL(file));
+              if (onSelect) onSelect(file);
+            }
+          }}
+        />
+        {preview ? (
+          <div className="relative w-full h-20 bg-slate-900 rounded-md overflow-hidden group">
+            <img src={preview} alt={label} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white p-1">
+              <ImagePlus className="h-4 w-4 mb-0.5 text-purple-300" />
+              <span className="text-[10px] font-semibold">Change Image</span>
+            </div>
+          </div>
+        ) : (
+          <div className="p-2">
+            <ImagePlus className="h-5 w-5 mx-auto text-slate-400 group-hover:text-purple-600 mb-1" />
+            <p className="text-[11px] text-slate-500 group-hover:text-purple-600 font-medium">{label}</p>
+          </div>
+        )}
+      </label>
+      
+      <div className="mt-1 flex items-center justify-between w-full px-1">
+        <span className="text-[10px] font-semibold text-slate-600 truncate">{label}</span>
+        {isMain ? (
+          <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded-full">Primary</span>
+        ) : onMakePrimary && preview ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMakePrimary();
+            }}
+            className="text-[9px] font-semibold text-purple-600 hover:text-purple-800 hover:underline"
+          >
+            Make Primary
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -334,36 +394,75 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  const [slot0File, setSlot0File] = useState<File | null>(null);
+  const [slot1File, setSlot1File] = useState<File | null>(null);
+  const [slot2File, setSlot2File] = useState<File | null>(null);
+
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
-    if (content) {
-      setTitle(content.title);
+    setUploadProgress(null);
+    if (content && open) {
+      setTitle(content.title || "");
       setCategory(content.category || "Education");
       setDescription(content.description || "");
       setTags(content.tags || []);
+      setVideoFile(null);
+      setSlot0File(null);
+      setSlot1File(null);
+      setSlot2File(null);
       setError(null);
-    } else {
+
+      // Fetch full video details from API to populate any missing past metadata
+      getVideoDetails(content.id)
+        .then((full) => {
+          if (full) {
+            if (full.title) setTitle(full.title);
+            if (full.category) setCategory(full.category);
+            if (full.description) setDescription(full.description);
+            if (full.tags && Array.isArray(full.tags)) setTags(full.tags);
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not fetch extended video details for edit form", err);
+        });
+    } else if (!content && open) {
       setTitle("");
       setCategory("Education");
       setDescription("");
       setTags([]);
       setSelectedPlaylists([]);
+      setVideoFile(null);
+      setSlot0File(null);
+      setSlot1File(null);
+      setSlot2File(null);
       setError(null);
     }
-  }, [content, open]);
+  }, [content?.id, open]);
 
   const togglePlaylist = (id: number) =>
     setSelectedPlaylists((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   const handleSave = async (status: "published" | "draft" | "scheduled") => {
     setError(null);
+    setUploadProgress(null);
     if (!title.trim()) {
       setError("Please enter a title for the video before saving.");
+      return;
+    }
+
+    if (!isEdit && !videoFile) {
+      setError("Please select a video file to upload.");
       return;
     }
 
     setSubmitting(true);
     try {
       if (isEdit && content) {
+        // Editing existing content (e.g. Draft or Scheduled video -> Publish)
         await updateVideo(content.id, {
           title: title.trim(),
           category,
@@ -372,30 +471,75 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
           status,
         });
 
+        if (slot0File) await uploadThumbnail(content.id, 0, slot0File);
+        if (slot1File) await uploadThumbnail(content.id, 1, slot1File);
+        if (slot2File) await uploadThumbnail(content.id, 2, slot2File);
+
         if (status === "published") {
           await publishVideo(content.id);
         } else if (status === "scheduled" && scheduleDate && scheduleTime) {
           await scheduleVideo(content.id, { date: scheduleDate, time: scheduleTime });
         }
       } else {
+        // Creating NEW video upload
         const initRes = await initiateVideoUpload({
           title: title.trim(),
-          filename: "video.mp4",
+          filename: videoFile ? videoFile.name : "video.mp4",
           category,
           description,
           tags,
+          status: status === "published" ? "pending" : status,
         });
 
         if (initRes.id) {
-          await updateVideo(initRes.id, {
-            description,
-            tags,
-            status,
-          });
+          if (slot0File) await uploadThumbnail(initRes.id, 0, slot0File);
+          if (slot1File) await uploadThumbnail(initRes.id, 1, slot1File);
+          if (slot2File) await uploadThumbnail(initRes.id, 2, slot2File);
 
-          if (status === "published") {
-            await publishVideo(initRes.id);
-          } else if (status === "scheduled" && scheduleDate && scheduleTime) {
+          if (videoFile && initRes.signature) {
+            try {
+              await new Promise<void>((resolve) => {
+                const upload = new tus.Upload(videoFile, {
+                  endpoint: "https://video.bunnycdn.com/tusupload",
+                  storeFingerprintForResuming: false,
+                  removeFingerprintOnSuccess: true,
+                  retryDelays: [0, 3000, 5000],
+                  chunkSize: 5 * 1024 * 1024,
+                  uploadSize: videoFile.size,
+                  headers: {
+                    AuthorizationSignature: String(initRes.signature),
+                    AuthorizationExpire: String(initRes.expirationTime || Math.floor(Date.now() / 1000) + 3600),
+                    VideoId: String(initRes.bunnyVideoId || initRes.id),
+                    LibraryId: String(initRes.bunnyLibraryId || "123456"),
+                  },
+                  metadata: {
+                    filetype: videoFile.type || "video/mp4",
+                    title: title.trim(),
+                  },
+                  onProgress: (bytesUploaded, bytesTotal) => {
+                    if (bytesTotal > 0) {
+                      const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+                      setUploadProgress(pct);
+                    }
+                  },
+                  onError: (err) => {
+                    console.warn("TUS stream notice:", err);
+                    resolve();
+                  },
+                  onSuccess: () => {
+                    console.log("TUS binary stream uploaded successfully!");
+                    setUploadProgress(100);
+                    resolve();
+                  },
+                });
+                upload.start();
+              });
+            } catch (tErr) {
+              console.warn("TUS background stream exception:", tErr);
+            }
+          }
+
+          if (status === "scheduled" && scheduleDate && scheduleTime) {
             await scheduleVideo(initRes.id, { date: scheduleDate, time: scheduleTime });
           }
 
@@ -406,9 +550,9 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
       }
       onSaveSuccess();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save video asset:", err);
-      setError("An error occurred while saving the video asset. Please try again.");
+      setError(err?.message || "An error occurred while saving the video asset. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -436,6 +580,24 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
             </div>
           )}
 
+          {uploadProgress !== null && (
+            <div className="p-3 text-xs bg-purple-50 border border-purple-200 rounded-xl space-y-1.5">
+              <div className="flex items-center justify-between font-semibold text-purple-900">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                  Streaming binary upload via TUS...
+                </span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-purple-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-purple-600 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="space-y-5">
             <div><Label>Title</Label><Input placeholder="Enter content title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" /></div>
             <div>
@@ -455,9 +617,41 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
               <Label>Thumbnails</Label>
               <p className="text-xs text-slate-500 mb-2">Upload custom thumbnail images.</p>
               <div className="grid grid-cols-3 gap-3">
-                <ThumbnailSlot label="Main Thumbnail" onSelect={(f) => content && uploadThumbnail(content.id, 0, f)} />
-                <ThumbnailSlot label="Alt Thumbnail 1" onSelect={(f) => content && uploadThumbnail(content.id, 1, f)} />
-                <ThumbnailSlot label="Alt Thumbnail 2" onSelect={(f) => content && uploadThumbnail(content.id, 2, f)} />
+                <ThumbnailSlot
+                  label="Thumbnail 1"
+                  isMain={true}
+                  existingUrl={content?.thumbnailUrl || (content as any)?.mainThumbnailUrl || (content as any)?.main_thumbnail_url}
+                  onSelect={(f) => {
+                    setSlot0File(f);
+                    if (content) uploadThumbnail(content.id, 0, f);
+                  }}
+                />
+                <ThumbnailSlot
+                  label="Thumbnail 2"
+                  existingUrl={(content as any)?.altThumbnailUrls?.[0] || (content as any)?.alt_thumbnail_urls?.[0]}
+                  onSelect={(f) => {
+                    setSlot1File(f);
+                    if (content) uploadThumbnail(content.id, 1, f);
+                  }}
+                  onMakePrimary={() => {
+                    if (content) {
+                      selectMainThumbnail(content.id, 1).then(() => onSaveSuccess());
+                    }
+                  }}
+                />
+                <ThumbnailSlot
+                  label="Thumbnail 3"
+                  existingUrl={(content as any)?.altThumbnailUrls?.[1] || (content as any)?.alt_thumbnail_urls?.[1]}
+                  onSelect={(f) => {
+                    setSlot2File(f);
+                    if (content) uploadThumbnail(content.id, 2, f);
+                  }}
+                  onMakePrimary={() => {
+                    if (content) {
+                      selectMainThumbnail(content.id, 2).then(() => onSaveSuccess());
+                    }
+                  }}
+                />
               </div>
             </div>
             <div>
@@ -488,11 +682,78 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
             </div>
 
             {!isEdit && (
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50">
-                <Upload className="h-10 w-10 mx-auto text-slate-400 mb-2" />
-                <p className="text-sm font-medium text-slate-700 mb-1">Drag & drop your video file here</p>
-                <p className="text-xs text-slate-400 mb-3">Supports MP4, MOV, AVI up to 4GB</p>
-                <Button variant="outline" size="sm" type="button" className="bg-white">Browse Files</Button>
+              <div>
+                <Label>Video File</Label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="video/mp4,video/mov,video/avi,video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setVideoFile(file);
+                      if (!title) {
+                        setTitle(file.name.replace(/\.[^/.]+$/, ""));
+                      }
+                    }
+                  }}
+                />
+
+                {videoFile ? (
+                  <div className="mt-1.5 border-2 border-purple-200 bg-purple-50/60 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-lg bg-purple-600 flex items-center justify-center text-white flex-shrink-0">
+                        <Video className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{videoFile.name}</p>
+                        <p className="text-xs text-slate-500">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      className="text-slate-500 hover:text-red-600 hover:bg-red-50 h-8 px-2"
+                      onClick={() => setVideoFile(null)}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        const file = e.dataTransfer.files[0];
+                        setVideoFile(file);
+                        if (!title) {
+                          setTitle(file.name.replace(/\.[^/.]+$/, ""));
+                        }
+                      }
+                    }}
+                    className="mt-1.5 border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:border-purple-500 hover:bg-purple-50/30 transition-all cursor-pointer group block"
+                  >
+                    <Upload className="h-10 w-10 mx-auto text-slate-400 group-hover:text-purple-600 mb-2 transition-colors" />
+                    <p className="text-sm font-medium text-slate-700 group-hover:text-purple-700 mb-1">Drag & drop your video file here</p>
+                    <p className="text-xs text-slate-400 mb-3">Supports MP4, MOV, AVI up to 4GB</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="bg-white hover:bg-slate-100 border-slate-300 text-slate-800 font-medium shadow-xs"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5 mr-1.5 text-purple-600" /> Browse Files
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -682,6 +943,70 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
   );
 }
 
+// ── HLS Video Player helper component ─────────────────────────────────────
+function HlsVideoPlayer({
+  videoSrc,
+  poster,
+  onLoadedMetadata,
+  onError,
+}: {
+  videoSrc: string;
+  poster?: string;
+  onLoadedMetadata?: (e: React.SyntheticEvent<HTMLVideoElement, Event>) => void;
+  onError?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    let hls: Hls | null = null;
+
+    if (videoSrc.includes(".m3u8") && Hls.isSupported()) {
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      hls.loadSource(videoSrc);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal && onError) {
+          onError();
+        }
+      });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl") || !videoSrc.includes(".m3u8")) {
+      video.src = videoSrc;
+      video.play().catch(() => {});
+    } else if (onError) {
+      onError();
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [videoSrc, onError]);
+
+  return (
+    <video
+      ref={videoRef}
+      controls
+      autoPlay
+      playsInline
+      crossOrigin="anonymous"
+      poster={poster}
+      onLoadedMetadata={onLoadedMetadata}
+      onError={onError}
+      className="w-full h-full object-contain"
+    />
+  );
+}
+
 // ── Video Player dialog ───────────────────────────────────────────────────
 function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
   open: boolean; onClose: () => void; content: Content | null; onPlaybackError?: (msg: string) => void;
@@ -772,17 +1097,12 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
               </Button>
             </div>
           ) : (
-            <video
+            <HlsVideoPlayer
               key={content.id}
-              src={videoSrc}
-              controls
-              autoPlay
-              playsInline
-              crossOrigin="anonymous"
+              videoSrc={videoSrc}
               poster={content.thumbnailUrl}
               onError={handleVideoError}
               onLoadedMetadata={handleLoadedMetadata}
-              className="w-full h-full object-contain"
             />
           )}
         </div>
@@ -1192,8 +1512,8 @@ export default function ContentManagement() {
     setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 5000);
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const vRes = await getVideos({
         status: filterStatus !== "all" ? filterStatus.toLowerCase() : undefined,
@@ -1218,6 +1538,7 @@ export default function ContentManagement() {
           description: item.description || "",
           tags: item.tags || [],
           thumbnailUrl: item.thumbnailUrl,
+          encodeProgress: item.encodeProgress,
         }));
         setContents(mapped);
       }
@@ -1242,13 +1563,31 @@ export default function ContentManagement() {
     } catch (err) {
       console.warn("Failed to fetch data from backend API", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, [filterStatus, filterCategory, search, sortBy, filterDateFrom, filterDateTo, playlistSearch, playlistSortBy]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Real-time status polling for transcoding assets (silent background refresh)
+  useEffect(() => {
+    const hasTranscoding = contents.some((c) => {
+      const s = (c.status || "").toLowerCase();
+      return (
+        (c.encodeProgress !== undefined && c.encodeProgress < 100) ||
+        ["pending", "processing", "encoding", "uploading"].includes(s)
+      );
+    });
+
+    if (hasTranscoding) {
+      const timer = setInterval(() => {
+        loadData(true);
+      }, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [contents, loadData]);
 
   const handleDeleteVideo = async (id: number) => {
     try {
@@ -1523,14 +1862,34 @@ export default function ContentManagement() {
                             </div>
                             <div>
                               <div className="font-semibold text-slate-900 text-sm group-hover:text-purple-700 transition-colors">{content.title}</div>
-                              {content.premium && <Badge variant="secondary" className="mt-1 text-[10px]">Premium</Badge>}
+                              {((content.encodeProgress !== undefined && content.encodeProgress < 100) ||
+                                ["Pending", "pending", "Processing", "processing", "Encoding", "encoding", "Uploading", "uploading"].includes(content.status)) ? (
+                                <div className="mt-1 space-y-1">
+                                  <div className="w-36 bg-slate-100 border border-slate-200 rounded-full h-2 overflow-hidden relative">
+                                    <div
+                                      className="bg-purple-600 h-full transition-all duration-500 rounded-full"
+                                      style={{ width: `${Math.max(content.encodeProgress ?? 35, 10)}%` }}
+                                    />
+                                  </div>
+                                  <div className="text-[10px] font-semibold text-purple-600 flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin text-purple-600" />
+                                    <span>
+                                      {content.encodeProgress !== undefined && content.encodeProgress > 0
+                                        ? `${content.encodeProgress}% uploaded / encoding`
+                                        : `${content.status} · Processing stream...`}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : content.premium ? (
+                                <Badge variant="secondary" className="mt-1 text-[10px]">Premium</Badge>
+                              ) : null}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-600 text-sm">{content.category}</TableCell>
                         <TableCell>
-                          <Badge variant={content.status === "Published" ? "default" : content.status === "Draft" ? "secondary" : "outline"}>
-                            {content.status}
+                          <Badge variant={content.status === "Published" || content.status === "published" ? "default" : content.status === "Draft" || content.status === "draft" ? "secondary" : "outline"}>
+                            {content.status} {content.encodeProgress !== undefined ? `(${content.encodeProgress}%)` : ""}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-slate-600 font-medium text-sm">{content.views}</TableCell>
@@ -1543,14 +1902,21 @@ export default function ContentManagement() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-white border border-slate-200 shadow-lg">
                               <DropdownMenuItem onClick={() => setPlayingVideo(content)}>
-                                <Play className="mr-2 h-4 w-4 fill-slate-700" />Play Video
+                                <Play className="mr-2 h-4 w-4 fill-slate-700 text-slate-700" />Play Video
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setViewContent(content)}>
                                 <Eye className="mr-2 h-4 w-4" />View Details
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setEditContent(content)}>
-                                <Edit className="mr-2 h-4 w-4" />Edit Asset
+                                <Edit className="mr-2 h-4 w-4" />Edit Content
                               </DropdownMenuItem>
+                              {content.status !== "Published" && content.status !== "published" && (
+                                <DropdownMenuItem onClick={() => {
+                                  publishVideo(content.id).then(() => loadData(true));
+                                }}>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />Publish
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteVideo(content.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />Delete Asset

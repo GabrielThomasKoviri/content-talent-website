@@ -10,7 +10,7 @@ export interface ApiVideo {
   title: string;
   description?: string;
   category?: string;
-  status: "published" | "draft" | "scheduled" | "encoding";
+  status: string;
   views?: number | string;
   duration?: string;
   date?: string;
@@ -23,9 +23,11 @@ export interface ApiVideo {
   mainThumbnailUrl?: string;
   altThumbnail1Url?: string;
   altThumbnail2Url?: string;
+  altThumbnailUrls?: string[];
   bunnyVideoId?: string;
   playbackUrl?: string;
   videoUrl?: string;
+  encodeProgress?: number;
 }
 
 export interface ApiPlaylist {
@@ -70,12 +72,18 @@ function transformVideo(raw: any): ApiVideo {
   const bunnyId = raw.bunny_video_id || raw.bunnyVideoId;
   const directPlayback = raw.playback_url || raw.playbackUrl || raw.video_url || raw.videoUrl || raw.url;
 
+  const altUrls = Array.isArray(raw.alt_thumbnail_urls)
+    ? raw.alt_thumbnail_urls
+    : Array.isArray(raw.altThumbnailUrls)
+    ? raw.altThumbnailUrls
+    : [raw.alt_thumbnail_1_url, raw.alt_thumbnail_2_url].filter(Boolean);
+
   return {
     id: raw.id ?? raw.video_id,
     title: raw.title || "Untitled Video",
     description: raw.description || "",
     category: raw.category || "Uncategorized",
-    status: (raw.status || "draft").toLowerCase() as any,
+    status: raw.status ? String(raw.status) : "draft",
     views: raw.views_count ?? raw.views ?? 0,
     duration: raw.duration || "0:00",
     date: raw.created_at ? raw.created_at.split("T")[0] : raw.date || new Date().toISOString().split("T")[0],
@@ -86,11 +94,13 @@ function transformVideo(raw: any): ApiVideo {
     tags: Array.isArray(raw.tags) ? raw.tags : typeof raw.tags === "string" ? JSON.parse(raw.tags) : [],
     thumbnailUrl: raw.main_thumbnail_url || raw.thumbnailUrl || raw.thumbnail,
     mainThumbnailUrl: raw.main_thumbnail_url || raw.mainThumbnailUrl,
-    altThumbnail1Url: raw.alt_thumbnail_1_url || raw.altThumbnail1Url,
-    altThumbnail2Url: raw.alt_thumbnail_2_url || raw.altThumbnail2Url,
+    altThumbnail1Url: altUrls[0] || raw.alt_thumbnail_1_url || raw.altThumbnail1Url,
+    altThumbnail2Url: altUrls[1] || raw.alt_thumbnail_2_url || raw.altThumbnail2Url,
+    altThumbnailUrls: altUrls,
     bunnyVideoId: bunnyId,
     playbackUrl: directPlayback,
     videoUrl: directPlayback,
+    encodeProgress: raw.encode_progress ?? raw.encodeProgress ?? (raw.encode_progress === 0 ? 0 : raw.is_playable === false ? 65 : undefined),
   };
 }
 
@@ -161,7 +171,17 @@ export async function initiateVideoUpload(data: {
   category?: string;
   description?: string;
   tags?: string[];
-}): Promise<{ id: number; uploadUrl?: string; signature?: string }> {
+  status?: string;
+}): Promise<{
+  id: number;
+  bunnyVideoId?: string;
+  bunnyLibraryId?: string;
+  uploadUrl?: string;
+  signature?: string;
+  expirationTime?: number;
+  status?: string;
+  encodeProgress?: number;
+}> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/initiate`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -170,8 +190,13 @@ export async function initiateVideoUpload(data: {
   const json = await handleResponse<any>(res);
   return {
     id: json.id || json.video_id,
+    bunnyVideoId: json.bunny_video_id || json.bunnyVideoId,
+    bunnyLibraryId: json.bunny_library_id || json.bunnyLibraryId,
     uploadUrl: json.upload_url || json.uploadUrl,
     signature: json.signature,
+    expirationTime: json.expiration_time || json.expirationTime,
+    status: json.status,
+    encodeProgress: json.encode_progress ?? json.encodeProgress ?? 0,
   };
 }
 
@@ -225,10 +250,15 @@ export async function scheduleVideo(
   id: number,
   schedule: { date: string; time: string; timezone?: string }
 ): Promise<ApiVideo> {
+  const userTimezone = schedule.timezone || (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "UTC";
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${id}/schedule`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify(schedule),
+    body: JSON.stringify({
+      date: schedule.date,
+      time: schedule.time,
+      timezone: userTimezone,
+    }),
   });
   const json = await handleResponse<any>(res);
   return transformVideo(json);
@@ -253,12 +283,15 @@ export async function uploadThumbnail(
 
 export async function selectMainThumbnail(
   videoId: number,
-  slot: number
+  slotOrUrl: number | string
 ): Promise<{ success: boolean }> {
+  const payload = typeof slotOrUrl === "string"
+    ? { selected_main_thumbnail: slotOrUrl, slot: 0 }
+    : { slot: slotOrUrl };
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${videoId}/thumbnails/select-main`, {
     method: "PATCH",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ slot }),
+    body: JSON.stringify(payload),
   });
   return handleResponse(res);
 }
