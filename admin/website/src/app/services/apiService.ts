@@ -1,9 +1,9 @@
 // API Service module for communicating with Content Management backend REST endpoints
 
 const BASE_URL =
-  (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
   (import.meta as any).env?.VITE_API_BASE_URL ||
-  "http://138.68.140.83:8000";
+  (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
+  "";
 
 export interface ApiVideo {
   id: number;
@@ -46,9 +46,9 @@ export interface ApiPlaylist {
 function getAuthToken(): string {
   return (
     localStorage.getItem("access_token") ||
-    (typeof window !== "undefined" && (window as any).env?.VITE_API_TOKEN) ||
     (import.meta as any).env?.VITE_API_TOKEN ||
-    "talentsea_secret_api_key_2026"
+    (typeof window !== "undefined" && (window as any).env?.VITE_API_TOKEN) ||
+    ""
   );
 }
 

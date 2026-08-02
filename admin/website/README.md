@@ -94,14 +94,16 @@ npm install
 
 ---
 
-### Step 2: Environment Configuration (Optional)
+### Step 2: Environment Configuration
 
-By default, the application connects to the default backend REST API. You can override the backend URL or access token by creating a `.env.local` file or declaring environment variables:
+Create a `.env` file in `admin/website/` (or copy from `.env.example`):
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
 VITE_API_TOKEN=your_secret_admin_token
 ```
+
+> ⚠️ **Security Note**: Never commit `.env` or sensitive API tokens to git repository. `.env` is automatically ignored by `.gitignore`.
 
 ---
 
@@ -114,7 +116,7 @@ npm run dev
 ```
 
 The application will start by default at:
-`http://localhost:5173` (or the next available port indicated in the terminal).
+`http://localhost:5173`.
 
 ---
 
@@ -134,6 +136,6 @@ The compiled assets will be output to the `dist/` directory, ready to be served 
 
 The admin website communicates with the backend REST server via `src/app/services/apiService.ts`.
 
-- **Base Endpoint**: `http://138.68.140.83:8000` (or `VITE_API_BASE_URL`)
+- **Base Endpoint**: Configured via `VITE_API_BASE_URL` in `.env`
 - **Authentication**: Bearer Token in `Authorization` Header (`localStorage.getItem("access_token")` or `VITE_API_TOKEN`)
 - **Resumable Uploads**: Video binary uploads are handled via `tus-js-client` chunked upload protocol endpoint (`/api/v1/admin/videos/initiate` & TUS server).
