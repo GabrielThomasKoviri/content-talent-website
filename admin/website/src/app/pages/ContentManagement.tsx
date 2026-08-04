@@ -6,7 +6,8 @@ import {
   deleteVideo, bulkDeleteVideos, publishVideo, scheduleVideo,
   uploadThumbnail, selectMainThumbnail, getPlaylists, createPlaylist, updatePlaylist,
   deletePlaylist, addVideosToPlaylist, removeVideoFromPlaylist,
-  bulkRemoveVideosFromPlaylist, uploadPlaylistBanner, getPlaylistVideos, ApiVideo, ApiPlaylist
+  bulkRemoveVideosFromPlaylist, uploadPlaylistBanner, getPlaylistVideos,
+  getAvailableVideosForPlaylist, reorderPlaylistVideos, ApiVideo, ApiPlaylist
 } from "../services/apiService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -233,19 +234,52 @@ function DateRangeDialog({ open, onClose, from, to, onChange }: {
 }
 
 // ── Add Videos dialog (multi-select) ──────────────────────────────────────
-function AddVideosDialog({ open, onClose, excludeIds, allVideos, onAdd }: {
+function AddVideosDialog({ open, onClose, excludeIds, allVideos, playlistId, onAdd }: {
   open: boolean; onClose: () => void;
   excludeIds: number[];
   allVideos: Content[];
+  playlistId?: number;
   onAdd: (ids: number[]) => void;
 }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
+  const [apiAvailable, setApiAvailable] = useState<Content[] | null>(null);
 
-  const available = allVideos.filter(
-    (c) => !excludeIds.includes(c.id) &&
-      c.title.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    if (open && playlistId) {
+      getAvailableVideosForPlaylist(playlistId, { search })
+        .then((res) => {
+          const mapped: Content[] = res.data.map((item) => ({
+            id: item.id,
+            title: item.title,
+            type: "Video",
+            category: item.category || "Uncategorized",
+            status: (item.status === "published" ? "Published" : item.status === "scheduled" ? "Scheduled" : "Draft") as any,
+            views: item.views !== undefined ? item.views.toString() : "0",
+            duration: item.duration || "0:00",
+            date: item.date || new Date().toISOString().split("T")[0],
+            premium: !!item.premium,
+            description: item.description || "",
+            tags: item.tags || [],
+            thumbnailUrl: item.thumbnailUrl,
+          }));
+          setApiAvailable(mapped);
+        })
+        .catch((err) => {
+          console.warn("Failed to fetch available videos for playlist", err);
+          setApiAvailable(null);
+        });
+    } else {
+      setApiAvailable(null);
+    }
+  }, [open, playlistId, search]);
+
+  const available = apiAvailable !== null
+    ? apiAvailable
+    : allVideos.filter(
+        (c) => !excludeIds.includes(c.id) &&
+          c.title.toLowerCase().includes(search.toLowerCase())
+      );
 
   const toggle = (id: number) =>
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -635,7 +669,8 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                   }}
                   onMakePrimary={() => {
                     if (content) {
-                      selectMainThumbnail(content.id, 1).then(() => onSaveSuccess());
+                      const url = (content as any)?.altThumbnailUrls?.[0] || (content as any)?.alt_thumbnail_urls?.[0] || 1;
+                      selectMainThumbnail(content.id, url).then(() => onSaveSuccess());
                     }
                   }}
                 />
@@ -648,7 +683,8 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                   }}
                   onMakePrimary={() => {
                     if (content) {
-                      selectMainThumbnail(content.id, 2).then(() => onSaveSuccess());
+                      const url = (content as any)?.altThumbnailUrls?.[1] || (content as any)?.alt_thumbnail_urls?.[1] || 2;
+                      selectMainThumbnail(content.id, url).then(() => onSaveSuccess());
                     }
                   }}
                 />
@@ -1320,6 +1356,7 @@ function PlaylistDetailScreen({
         onClose={() => setAddVideosOpen(false)}
         excludeIds={currentVideoIds}
         allVideos={allVideos}
+        playlistId={playlist.id}
         onAdd={handleAdd}
       />
       <EditVideoDialog

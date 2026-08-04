@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "../components/ui/label";
 import {
   MessageSquare, Megaphone, Plus, Send, ThumbsUp, Trash2,
   SlidersHorizontal, Search, X, Calendar, ChevronLeft, ChevronRight,
-  CornerDownRight, Edit,
+  CornerDownRight, Edit, Loader2, Heart, MessageCircle,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -16,11 +16,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../components/ui/select";
+import {
+  getAdminComments, getCommentReplies, postCommentReply, toggleCommentLike, deleteComment,
+  ApiComment, ApiReply,
+} from "../services/apiService";
 
-// ── Data ───────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────
 
 type Announcement = { id: number; title: string; content: string; date: string; views: number };
-type Comment = { id: number; author: string; content: string; video: string; category: string; likes: number; date: string; time: string };
 
 const initialAnnouncements: Announcement[] = [
   { id: 1, title: "New Course Series Coming Next Week!", content: "Excited to announce our new advanced JavaScript series starting Monday. Premium members get early access!", date: "2024-06-20", views: 8234 },
@@ -28,19 +31,12 @@ const initialAnnouncements: Announcement[] = [
   { id: 3, title: "Thank You for 10K Subscribers!", content: "We've reached an incredible milestone! To celebrate, all subscribers get 20% off annual plans this week.", date: "2024-06-15", views: 12543 },
 ];
 
-const allComments: Comment[] = [
-  { id: 1, author: "John Anderson", content: "This tutorial on React hooks was incredibly helpful! Clear explanations and great examples.", video: "Complete React Tutorial 2024", category: "Education", likes: 24, date: "2024-06-21", time: "10:30 AM" },
-  { id: 2, author: "Sarah Miller", content: "Could you make a video about state management with Redux Toolkit?", video: "Advanced JavaScript Patterns", category: "Programming", likes: 12, date: "2024-06-21", time: "07:15 AM" },
-  { id: 3, author: "Mike Johnson", content: "The audio quality could be better in this one, but great content overall!", video: "Building Scalable Apps", category: "Technology", likes: 8, date: "2024-06-20", time: "03:45 PM" },
-  { id: 4, author: "Emma Davis", content: "Could we get a downloadable cheat sheet for this?", video: "Design System Fundamentals", category: "Design", likes: 6, date: "2024-06-20", time: "11:00 AM" },
-  { id: 5, author: "Alex Torres", content: "Amazing breakdown of design tokens! Would love a follow-up on theming.", video: "Design System Fundamentals", category: "Design", likes: 31, date: "2024-06-19", time: "09:20 AM" },
-  { id: 6, author: "Priya Sharma", content: "When will the next module drop? This series is outstanding.", video: "Complete React Tutorial 2024", category: "Education", likes: 17, date: "2024-06-19", time: "06:50 PM" },
-  { id: 7, author: "Carlos Mendez", content: "Best React content on the internet, no debate.", video: "Complete React Tutorial 2024", category: "Education", likes: 45, date: "2024-06-18", time: "02:10 PM" },
-  { id: 8, author: "Nina Patel", content: "I had trouble with the useEffect cleanup section — could you do a short follow-up?", video: "Advanced JavaScript Patterns", category: "Programming", likes: 9, date: "2024-06-18", time: "08:45 AM" },
-  { id: 9, author: "James Liu", content: "This really helped me land my first dev job. Thank you!", video: "Building Scalable Apps", category: "Technology", likes: 19, date: "2024-06-17", time: "05:30 PM" },
-  { id: 10, author: "Fatima Hassan", content: "Subscribed just for this series. Worth every penny!", video: "Design System Fundamentals", category: "Design", likes: 22, date: "2024-06-17", time: "11:20 AM" },
-  { id: 11, author: "Marco Silva", content: "Chapter 4 is pure gold. Rewatched it three times.", video: "Complete React Tutorial 2024", category: "Education", likes: 38, date: "2024-06-16", time: "09:00 AM" },
-  { id: 12, author: "Sophie Kim", content: "Please add subtitles — watching with sound off at work!", video: "Advanced JavaScript Patterns", category: "Programming", likes: 14, date: "2024-06-16", time: "03:15 PM" },
+const fallbackComments: ApiComment[] = [
+  { id: 1, userId: 101, userName: "John Anderson", text: "This tutorial on React hooks was incredibly helpful! Clear explanations and great examples.", videoId: 101, videoTitle: "Complete React Tutorial 2024", likes: 24, isLiked: false, replyCount: 2, createdAt: "2024-06-21T10:30:00Z" },
+  { id: 2, userId: 102, userName: "Sarah Miller", text: "Could you make a video about state management with Redux Toolkit?", videoId: 102, videoTitle: "Advanced JavaScript Patterns", likes: 12, isLiked: true, replyCount: 0, createdAt: "2024-06-21T07:15:00Z" },
+  { id: 3, userId: 103, userName: "Mike Johnson", text: "The audio quality could be better in this one, but great content overall!", videoId: 103, videoTitle: "Building Scalable Apps", likes: 8, isLiked: false, replyCount: 1, createdAt: "2024-06-20T15:45:00Z" },
+  { id: 4, userId: 104, userName: "Emma Davis", text: "Could we get a downloadable cheat sheet for this?", videoId: 104, videoTitle: "Design System Fundamentals", likes: 6, isLiked: false, replyCount: 0, createdAt: "2024-06-20T11:00:00Z" },
+  { id: 5, userId: 105, userName: "Alex Torres", text: "Amazing breakdown of design tokens! Would love a follow-up on theming.", videoId: 104, videoTitle: "Design System Fundamentals", likes: 31, isLiked: true, replyCount: 3, createdAt: "2024-06-19T09:20:00Z" },
 ];
 
 const categories = ["Education", "Programming", "Technology", "Design"];
@@ -83,7 +79,7 @@ function DatePickerDialog({ open, onClose, value, onChange }: {
   );
 }
 
-// ── Video picker dialog (category → videos list with search) ───────────────
+// ── Video picker dialog ────────────────────────────────────────────────────
 function VideoPickerDialog({ open, onClose, category, onSelect }: {
   open: boolean; onClose: () => void; category: string; onSelect: (v: string) => void;
 }) {
@@ -149,17 +145,6 @@ function AnnouncementEditDialog({ open, onClose, announcement }: {
             <Label>Content</Label>
             <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={5} />
           </div>
-          <div>
-            <Label>Target Audience</Label>
-            <Select defaultValue="all">
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subscribers</SelectItem>
-                <SelectItem value="premium">Premium Only</SelectItem>
-                <SelectItem value="basic">Basic Only</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -185,11 +170,54 @@ export default function Community() {
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
 
-  // Dialog states
+  // Live Comments State
+  const [comments, setComments] = useState<ApiComment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Dialog & Thread states
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [videoPickerOpen, setVideoPickerOpen] = useState(false);
   const [replyOpenId, setReplyOpenId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
+  
+  // Thread replies cache: commentId -> ApiReply[]
+  const [openRepliesId, setOpenRepliesId] = useState<number | null>(null);
+  const [repliesCache, setRepliesCache] = useState<Record<number, ApiReply[]>>({});
+  const [loadingReplies, setLoadingReplies] = useState(false);
+
+  // Fetch comments from API
+  const fetchComments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getAdminComments({
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        date: filterDate || undefined,
+        minLikes: filterMinLikes ? parseInt(filterMinLikes) : undefined,
+        search: search || undefined,
+        sort: sortBy,
+        page,
+        limit: PAGE_SIZE,
+      });
+      setComments(res.data);
+      setTotalCount(res.pagination?.total || res.data.length);
+    } catch (err) {
+      console.warn("Failed to load comments from API, using fallback", err);
+      let list = [...fallbackComments];
+      if (search) {
+        list = list.filter(c => c.userName.toLowerCase().includes(search.toLowerCase()) || c.text.toLowerCase().includes(search.toLowerCase()));
+      }
+      setComments(list);
+      setTotalCount(list.length);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterCategory, filterDate, filterMinLikes, search, sortBy, page]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
 
   const activeFilterCount =
     (filterCategory !== "all" ? 1 : 0) +
@@ -204,29 +232,86 @@ export default function Community() {
 
   const handleCategoryChange = (v: string) => {
     setFilterCategory(v);
-    setFilterVideo("all"); // reset video when category changes
+    setFilterVideo("all");
     setPage(1);
   };
 
-  const filtered = allComments
-    .filter((c) => {
-      if (filterCategory !== "all" && c.category !== filterCategory) return false;
-      if (filterVideo !== "all" && c.video !== filterVideo) return false;
-      if (filterDate && c.date !== filterDate) return false;
-      if (filterMinLikes && c.likes < parseInt(filterMinLikes)) return false;
-      if (search && !c.author.toLowerCase().includes(search.toLowerCase()) && !c.content.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === "newest") return b.date.localeCompare(a.date) || b.time.localeCompare(a.time);
-      if (sortBy === "oldest") return a.date.localeCompare(b.date) || a.time.localeCompare(b.time);
-      if (sortBy === "most-liked") return b.likes - a.likes;
-      return 0;
-    });
+  // Toggle Like API Call
+  const handleToggleLike = async (commentId: number) => {
+    try {
+      const res = await toggleCommentLike(commentId);
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId ? { ...c, isLiked: res.isLiked, likes: res.likes } : c
+        )
+      );
+    } catch (err) {
+      console.error("Failed to toggle like", err);
+      // Optimistic fallback
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId ? { ...c, isLiked: !c.isLiked, likes: c.isLiked ? c.likes - 1 : c.likes + 1 } : c
+        )
+      );
+    }
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  // Delete Comment API Call
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+    try {
+      await deleteComment(commentId);
+      fetchComments();
+    } catch (err) {
+      console.error("Failed to delete comment", err);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    }
+  };
+
+  // Toggle replies thread view
+  const handleToggleReplies = async (commentId: number) => {
+    if (openRepliesId === commentId) {
+      setOpenRepliesId(null);
+      return;
+    }
+    setOpenRepliesId(commentId);
+    if (!repliesCache[commentId]) {
+      setLoadingReplies(true);
+      try {
+        const res = await getCommentReplies(commentId);
+        setRepliesCache((prev) => ({ ...prev, [commentId]: res.data }));
+      } catch (err) {
+        console.warn("Failed to load replies", err);
+      } finally {
+        setLoadingReplies(false);
+      }
+    }
+  };
+
+  // Post Creator Reply
+  const handleSendReply = async (commentId: number) => {
+    if (!replyText.trim()) return;
+    setSubmittingReply(true);
+    try {
+      const newReply = await postCommentReply(commentId, replyText);
+      setRepliesCache((prev) => ({
+        ...prev,
+        [commentId]: [...(prev[commentId] || []), newReply],
+      }));
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, replyCount: c.replyCount + 1 } : c))
+      );
+      setOpenRepliesId(commentId);
+      setReplyText("");
+      setReplyOpenId(null);
+    } catch (err) {
+      console.error("Failed to post reply", err);
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -240,17 +325,6 @@ export default function Community() {
           <div className="space-y-4">
             <div><Label>Title</Label><Input placeholder="Enter announcement title" /></div>
             <div><Label>Content</Label><Textarea placeholder="Write your announcement here..." rows={6} /></div>
-            <div>
-              <Label>Target Audience</Label>
-              <Select defaultValue="all">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Subscribers</SelectItem>
-                  <SelectItem value="premium">Premium Only</SelectItem>
-                  <SelectItem value="basic">Basic Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAnnouncementOpen(false)}>Cancel</Button>
@@ -285,7 +359,7 @@ export default function Community() {
           <h1 className="text-3xl font-bold">Community</h1>
           <p className="text-gray-600 mt-1">Engage with your audience and manage discussions</p>
         </div>
-        <Button className="gap-2" onClick={() => setAnnouncementOpen(true)}>
+        <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800" onClick={() => setAnnouncementOpen(true)}>
           <Plus className="h-4 w-4" />New Announcement
         </Button>
       </div>
@@ -343,7 +417,7 @@ export default function Community() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CardTitle>Comments</CardTitle>
-                <span className="text-sm text-gray-500">{filtered.length} of {allComments.length}</span>
+                <span className="text-sm text-gray-500">{totalCount} total</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
@@ -364,9 +438,7 @@ export default function Community() {
 
             {showFilters && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                {/* Row 1: Category + Video + Date + Likes */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {/* Category */}
                   <div>
                     <Label className="text-xs mb-1 block text-gray-500">Category</Label>
                     <Select value={filterCategory} onValueChange={handleCategoryChange}>
@@ -378,7 +450,6 @@ export default function Community() {
                     </Select>
                   </div>
 
-                  {/* Video — click opens dialog, requires category */}
                   <div>
                     <Label className="text-xs mb-1 block text-gray-500">Video</Label>
                     <Button
@@ -387,33 +458,22 @@ export default function Community() {
                       className="h-8 text-sm w-full justify-start gap-1.5"
                       disabled={filterCategory === "all"}
                       onClick={() => setVideoPickerOpen(true)}
-                      title={filterCategory === "all" ? "Select a category first" : ""}
                     >
                       <span className="truncate flex-1 text-left">
                         {filterVideo !== "all" ? filterVideo : filterCategory === "all" ? "Select category first" : "All Videos"}
                       </span>
-                      {filterVideo !== "all" && (
-                        <X className="h-3 w-3 flex-shrink-0 text-gray-400 hover:text-red-500"
-                          onClick={(e) => { e.stopPropagation(); setFilterVideo("all"); setPage(1); }} />
-                      )}
                     </Button>
                   </div>
 
-                  {/* Date */}
                   <div>
                     <Label className="text-xs mb-1 block text-gray-500">Date</Label>
                     <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm w-full justify-start"
                       onClick={() => setDatePickerOpen(true)}>
                       <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate flex-1 text-left">{filterDate || "Pick date"}</span>
-                      {filterDate && (
-                        <X className="h-3 w-3 flex-shrink-0 text-gray-400 hover:text-red-500"
-                          onClick={(e) => { e.stopPropagation(); setFilterDate(""); setPage(1); }} />
-                      )}
                     </Button>
                   </div>
 
-                  {/* Min likes — input */}
                   <div>
                     <Label className="text-xs mb-1 block text-gray-500">Min Likes</Label>
                     <Input
@@ -427,7 +487,6 @@ export default function Community() {
                   </div>
                 </div>
 
-                {/* Sort + clear */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Label className="text-xs text-gray-500">Sort by:</Label>
@@ -436,7 +495,7 @@ export default function Community() {
                       <SelectContent>
                         <SelectItem value="newest">Newest first</SelectItem>
                         <SelectItem value="oldest">Oldest first</SelectItem>
-                        <SelectItem value="most-liked">Most liked</SelectItem>
+                        <SelectItem value="mostLiked">Most liked</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -452,67 +511,124 @@ export default function Community() {
         </CardHeader>
 
         <CardContent className="p-6">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-slate-400 gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading comments...
+            </div>
+          ) : comments.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">No comments match your filters</p>
+              <p className="font-medium">No comments found</p>
               <Button variant="link" className="text-purple-600 mt-1" onClick={resetFilters}>Clear all filters</Button>
             </div>
           ) : (
             <>
               <div className="space-y-4">
-                {paginated.map((comment) => (
-                  <div key={comment.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                        {comment.author.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{comment.author}</span>
-                          <Badge variant="outline" className="text-xs">{comment.category}</Badge>
+                {comments.map((comment) => (
+                  <div key={comment.id} className="border border-gray-200 dark:border-slate-800 rounded-xl p-4 transition-all">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-semibold flex-shrink-0 overflow-hidden">
+                          {comment.userAvatar ? (
+                            <img src={comment.userAvatar} alt={comment.userName} className="w-full h-full object-cover" />
+                          ) : (
+                            comment.userName.charAt(0)
+                          )}
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          on "{comment.video}" · {comment.date} at {comment.time}
+                        <div>
+                          <div className="font-semibold text-sm text-slate-900 dark:text-white">{comment.userName}</div>
+                          <div className="text-xs text-slate-500">
+                            on <span className="font-medium text-slate-700 dark:text-slate-300">{comment.videoTitle || `Video #${comment.videoId}`}</span> · {new Date(comment.createdAt).toLocaleDateString()}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <p className="text-gray-700 mb-3 ml-13">{comment.content}</p>
-
-                    <div className="flex items-center justify-between ml-13">
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
-                        <ThumbsUp className="h-4 w-4" />{comment.likes}
                       </div>
                       <Button
-                        variant="ghost" size="sm"
-                        className="gap-1.5"
-                        onClick={() => { setReplyOpenId(replyOpenId === comment.id ? null : comment.id); setReplyText(""); }}
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="text-slate-400 hover:text-red-600 h-8 w-8"
                       >
-                        <CornerDownRight className="h-4 w-4" />Reply
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
 
-                    {/* Inline reply box */}
+                    <p className="text-sm text-slate-800 dark:text-slate-200 mb-3 ml-13">{comment.text}</p>
+
+                    <div className="flex items-center justify-between ml-13 text-xs text-slate-500">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => handleToggleLike(comment.id)}
+                          className={`flex items-center gap-1.5 font-medium transition-colors ${comment.isLiked ? "text-purple-600" : "hover:text-purple-600"}`}
+                        >
+                          <Heart className={`h-4 w-4 ${comment.isLiked ? "fill-purple-600" : ""}`} />
+                          {comment.likes} Likes
+                        </button>
+                        <button
+                          onClick={() => handleToggleReplies(comment.id)}
+                          className="flex items-center gap-1.5 font-medium hover:text-purple-600 transition-colors"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          {comment.replyCount} Replies
+                        </button>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 text-xs text-purple-600 hover:text-purple-700"
+                        onClick={() => {
+                          setReplyOpenId(replyOpenId === comment.id ? null : comment.id);
+                          setReplyText("");
+                        }}
+                      >
+                        <CornerDownRight className="h-3.5 w-3.5" /> Reply
+                      </Button>
+                    </div>
+
+                    {/* Inline reply composer */}
                     {replyOpenId === comment.id && (
                       <div className="mt-3 ml-13 flex gap-2">
                         <Input
-                          placeholder={`Reply to ${comment.author}…`}
+                          placeholder={`Reply to ${comment.userName}…`}
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
-                          className="flex-1 h-9"
+                          className="flex-1 h-9 text-xs"
                           autoFocus
                         />
                         <Button
                           size="sm"
-                          disabled={!replyText.trim()}
-                          onClick={() => { setReplyOpenId(null); setReplyText(""); }}
+                          disabled={!replyText.trim() || submittingReply}
+                          onClick={() => handleSendReply(comment.id)}
+                          className="bg-slate-900 text-white hover:bg-slate-800"
                         >
-                          <Send className="h-4 w-4" />
+                          {submittingReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => { setReplyOpenId(null); setReplyText(""); }}>
-                          <X className="h-4 w-4" />
+                          <X className="h-3.5 w-3.5" />
                         </Button>
+                      </div>
+                    )}
+
+                    {/* Replies Thread */}
+                    {openRepliesId === comment.id && (
+                      <div className="mt-3 ml-13 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                        {loadingReplies ? (
+                          <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading replies...
+                          </div>
+                        ) : (repliesCache[comment.id] || []).length === 0 ? (
+                          <p className="text-xs text-slate-400 py-1">No replies in this thread yet.</p>
+                        ) : (
+                          (repliesCache[comment.id] || []).map((reply) => (
+                            <div key={reply.id} className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg text-xs space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">{reply.userName}</span>
+                                <span className="text-[10px] text-slate-400">{new Date(reply.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <p className="text-slate-600 dark:text-slate-300">{reply.text}</p>
+                            </div>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -523,25 +639,15 @@ export default function Community() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-6 pt-4 border-t">
                   <p className="text-sm text-gray-500">
-                    Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} comments
+                    Page {page} of {totalPages}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="h-8 w-8"
-                      disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>
+                      disabled={page === 1} onClick={() => setPage(page - 1)}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <Button
-                        key={p}
-                        variant={p === safePage ? "default" : "outline"}
-                        size="icon" className="h-8 w-8 text-xs"
-                        onClick={() => setPage(p)}
-                      >
-                        {p}
-                      </Button>
-                    ))}
                     <Button variant="outline" size="icon" className="h-8 w-8"
-                      disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>
+                      disabled={page === totalPages} onClick={() => setPage(page + 1)}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>

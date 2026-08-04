@@ -1,31 +1,136 @@
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { User, Lock, Bell, CreditCard, Globe, Shield, Save } from "lucide-react";
+import { User, Lock, Bell, CreditCard, Globe, Shield, Save, Loader2, Upload, Check } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
+import { getCreatorProfile, updateCreatorProfile, uploadAvatarPhoto, ApiProfile } from "../services/apiService";
 
 export default function Settings() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Form Fields
+  const [firstName, setFirstName] = useState("Creator");
+  const [lastName, setLastName] = useState("Name");
+  const [email, setEmail] = useState("creator@example.com");
+  const [bio, setBio] = useState("Content creator and educator");
+  const [website, setWebsite] = useState("https://example.com");
+  const [phone, setPhone] = useState("+1 (555) 123-4567");
+  const [location, setLocation] = useState("San Francisco, CA");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [youtube, setYoutube] = useState("");
+  const [instagram, setInstagram] = useState("");
+
+  // Load Profile from API
+  useEffect(() => {
+    setLoading(true);
+    getCreatorProfile()
+      .then((profile: ApiProfile) => {
+        if (profile.firstName) setFirstName(profile.firstName);
+        if (profile.lastName) setLastName(profile.lastName);
+        if (profile.email) setEmail(profile.email);
+        if (profile.bio !== undefined) setBio(profile.bio);
+        if (profile.website !== undefined) setWebsite(profile.website);
+        if (profile.phone !== undefined) setPhone(profile.phone);
+        if (profile.location !== undefined) setLocation(profile.location);
+        if (profile.avatarUrl) setAvatarUrl(profile.avatarUrl);
+        if (profile.socialLinks) {
+          setTwitter(profile.socialLinks.twitter || "");
+          setYoutube(profile.socialLinks.youtube || "");
+          setInstagram(profile.socialLinks.instagram || "");
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load creator profile from API", err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Save Profile Changes
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    setSaveSuccess(false);
+    try {
+      await updateCreatorProfile({
+        first_name: firstName,
+        last_name: lastName,
+        bio,
+        website,
+        phone,
+        location,
+        social_links: {
+          twitter,
+          youtube,
+          instagram,
+        },
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to update profile", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Upload Avatar File
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    setUploadingAvatar(true);
+    try {
+      const res = await uploadAvatarPhoto(file);
+      if (res.avatarUrl) {
+        setAvatarUrl(res.avatarUrl);
+      }
+    } catch (err) {
+      console.error("Failed to upload avatar photo", err);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Hidden File Input for Avatar */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleAvatarChange}
+        accept="image/png, image/jpeg, image/webp"
+        className="hidden"
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-gray-600 mt-1">Manage your account and platform settings</p>
         </div>
-        <Button className="gap-2">
-          <Save className="h-4 w-4" />
-          Save Changes
+        <Button
+          onClick={handleSaveChanges}
+          disabled={saving || loading}
+          className={`gap-2 ${saveSuccess ? "bg-green-600 hover:bg-green-700" : "bg-slate-900 hover:bg-slate-800"} text-white transition-colors`}
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : saveSuccess ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save Changes"}
         </Button>
       </div>
 
@@ -64,48 +169,69 @@ export default function Settings() {
               <CardTitle>Profile Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
-                  CR
+              {loading ? (
+                <div className="flex items-center justify-center py-8 text-slate-400 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" /> Loading profile details...
                 </div>
-                <div>
-                  <Button variant="outline" size="sm">Change Avatar</Button>
-                  <p className="text-xs text-gray-500 mt-1">JPG or PNG. Max size 2MB</p>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="first-name">First Name</Label>
-                  <Input id="first-name" defaultValue="Creator" />
-                </div>
-                <div>
-                  <Label htmlFor="last-name">Last Name</Label>
-                  <Input id="last-name" defaultValue="Name" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" defaultValue="creator@example.com" />
-              </div>
-              <div>
-                <Label htmlFor="bio">Bio</Label>
-                <Input id="bio" defaultValue="Content creator and educator" />
-              </div>
-              <div>
-                <Label htmlFor="website">Website</Label>
-                <Input id="website" defaultValue="https://example.com" />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" defaultValue="+1 (555) 123-4567" />
-                </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" defaultValue="San Francisco, CA" />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-6">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden relative">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        `${firstName.charAt(0)}${lastName.charAt(0)}`
+                      )}
+                    </div>
+                    <div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingAvatar}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="gap-2"
+                      >
+                        {uploadingAvatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-1">JPG, PNG or WEBP. Max size 2MB</p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label htmlFor="first-name">First Name</Label>
+                      <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="last-name">Last Name</Label>
+                      <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email Address <span className="text-xs text-slate-400 font-normal">(Read-only)</span></Label>
+                    <Input id="email" type="email" value={email} disabled className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed" />
+                  </div>
+                  <div>
+                    <Label htmlFor="bio">Bio</Label>
+                    <Input id="bio" value={bio} onChange={(e) => setBio(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input id="website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="location">Location</Label>
+                      <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -116,15 +242,15 @@ export default function Settings() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="twitter">Twitter</Label>
-                <Input id="twitter" placeholder="https://twitter.com/username" />
+                <Input id="twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/username" />
               </div>
               <div>
                 <Label htmlFor="youtube">YouTube</Label>
-                <Input id="youtube" placeholder="https://youtube.com/@username" />
+                <Input id="youtube" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/@username" />
               </div>
               <div>
                 <Label htmlFor="instagram">Instagram</Label>
-                <Input id="instagram" placeholder="https://instagram.com/username" />
+                <Input id="instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/username" />
               </div>
             </CardContent>
           </Card>
@@ -149,7 +275,7 @@ export default function Settings() {
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
                 <Input id="confirm-password" type="password" />
               </div>
-              <Button>Update Password</Button>
+              <Button className="bg-slate-900 text-white hover:bg-slate-800">Update Password</Button>
             </CardContent>
           </Card>
 
@@ -169,30 +295,6 @@ export default function Settings() {
               </div>
               <Separator />
               <Button variant="outline">Configure Authenticator App</Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Sessions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-4 border-b">
-                  <div>
-                    <div className="font-medium">MacBook Pro - San Francisco, CA</div>
-                    <div className="text-sm text-gray-600">Current session • Active now</div>
-                  </div>
-                  <Badge variant="secondary">Active</Badge>
-                </div>
-                <div className="flex items-center justify-between pb-4 border-b">
-                  <div>
-                    <div className="font-medium">iPhone 14 - San Francisco, CA</div>
-                    <div className="text-sm text-gray-600">Last active 2 hours ago</div>
-                  </div>
-                  <Button variant="outline" size="sm">Revoke</Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -219,45 +321,6 @@ export default function Settings() {
                 </div>
                 <Switch defaultChecked />
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Revenue Updates</div>
-                  <div className="text-sm text-gray-600">Daily revenue summaries</div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Content Performance</div>
-                  <div className="text-sm text-gray-600">Weekly performance reports</div>
-                </div>
-                <Switch />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Push Notifications</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Mobile Notifications</div>
-                  <div className="text-sm text-gray-600">Receive push notifications on mobile</div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Desktop Notifications</div>
-                  <div className="text-sm text-gray-600">Receive desktop notifications</div>
-                </div>
-                <Switch />
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -281,35 +344,6 @@ export default function Settings() {
                 </div>
                 <Button variant="outline" size="sm">Edit</Button>
               </div>
-              <Button variant="outline">Add Payment Method</Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Payout Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="bank-account">Bank Account</Label>
-                <Input id="bank-account" defaultValue="•••• •••• •••• 5678" />
-              </div>
-              <div>
-                <Label htmlFor="payout-schedule">Payout Schedule</Label>
-                <Select defaultValue="monthly">
-                  <SelectTrigger id="payout-schedule">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="minimum-payout">Minimum Payout Amount</Label>
-                <Input id="minimum-payout" defaultValue="$100" />
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -331,34 +365,6 @@ export default function Settings() {
                     <SelectItem value="en">English</SelectItem>
                     <SelectItem value="es">Spanish</SelectItem>
                     <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select defaultValue="pst">
-                  <SelectTrigger id="timezone">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pst">Pacific Time (PST)</SelectItem>
-                    <SelectItem value="est">Eastern Time (EST)</SelectItem>
-                    <SelectItem value="cst">Central Time (CST)</SelectItem>
-                    <SelectItem value="utc">UTC</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="currency">Currency</Label>
-                <Select defaultValue="usd">
-                  <SelectTrigger id="currency">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="usd">USD ($)</SelectItem>
-                    <SelectItem value="eur">EUR (€)</SelectItem>
-                    <SelectItem value="gbp">GBP (£)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -374,31 +380,6 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Button variant="outline">Download My Data</Button>
-              <Separator />
-              <Button variant="outline">Request Data Deletion</Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-red-600">Danger Zone</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Deactivate Account</div>
-                  <div className="text-sm text-gray-600">Temporarily disable your account</div>
-                </div>
-                <Button variant="outline">Deactivate</Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-red-600">Delete Account</div>
-                  <div className="text-sm text-gray-600">Permanently delete your account and all data</div>
-                </div>
-                <Button variant="destructive">Delete</Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

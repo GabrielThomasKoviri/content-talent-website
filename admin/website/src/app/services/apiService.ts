@@ -5,6 +5,8 @@ const BASE_URL =
   (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
   "";
 
+// ── Types & Interfaces ──────────────────────────────────────────────────────
+
 export interface ApiVideo {
   id: number;
   title: string;
@@ -28,10 +30,12 @@ export interface ApiVideo {
   playbackUrl?: string;
   videoUrl?: string;
   encodeProgress?: number;
+  isPlayable?: boolean;
 }
 
 export interface ApiPlaylist {
   id: number;
+  name: string;
   title: string;
   description?: string;
   videoCount?: number;
@@ -42,6 +46,51 @@ export interface ApiPlaylist {
   updatedAt?: string;
   thumbnailUrl?: string;
 }
+
+export interface ApiComment {
+  id: number;
+  userId: number;
+  userName: string;
+  userAvatar?: string;
+  text: string;
+  videoId: number;
+  videoTitle?: string;
+  likes: number;
+  isLiked: boolean;
+  replyCount: number;
+  createdAt: string;
+}
+
+export interface ApiReply {
+  id: number;
+  commentId: number;
+  text: string;
+  userId: number;
+  userName: string;
+  userAvatar?: string;
+  createdAt: string;
+}
+
+export interface ApiSocialLinks {
+  twitter?: string;
+  youtube?: string;
+  instagram?: string;
+}
+
+export interface ApiProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  bio?: string;
+  website?: string;
+  phone?: string;
+  location?: string;
+  avatarUrl?: string;
+  socialLinks?: ApiSocialLinks;
+  updatedAt?: string;
+}
+
+// ── Internal Helpers ────────────────────────────────────────────────────────
 
 function getAuthToken(): string {
   return (
@@ -101,14 +150,17 @@ function transformVideo(raw: any): ApiVideo {
     playbackUrl: directPlayback,
     videoUrl: directPlayback,
     encodeProgress: raw.encode_progress ?? raw.encodeProgress ?? (raw.encode_progress === 0 ? 0 : raw.is_playable === false ? 65 : undefined),
+    isPlayable: raw.is_playable ?? raw.isPlayable ?? true,
   };
 }
 
 function transformPlaylist(raw: any): ApiPlaylist {
   if (!raw) return raw;
+  const nameVal = raw.name || raw.title || "Untitled Playlist";
   return {
     id: raw.id ?? raw.playlist_id,
-    title: raw.title || "Untitled Playlist",
+    name: nameVal,
+    title: nameVal,
     description: raw.description || "",
     videoCount: raw.video_count ?? raw.videoCount ?? (raw.video_ids ? raw.video_ids.length : 0),
     videos: raw.video_count ?? raw.videoCount ?? (raw.video_ids ? raw.video_ids.length : 0),
@@ -116,7 +168,54 @@ function transformPlaylist(raw: any): ApiPlaylist {
     date: raw.created_at ? raw.created_at.split("T")[0] : raw.date || new Date().toISOString().split("T")[0],
     createdAt: raw.created_at || raw.createdAt,
     updatedAt: raw.updated_at || raw.updatedAt,
-    thumbnailUrl: raw.banner_image_url || raw.thumbnailUrl || raw.thumbnail,
+    thumbnailUrl: raw.thumbnail_url || raw.banner_image_url || raw.thumbnailUrl || raw.thumbnail,
+  };
+}
+
+function transformComment(raw: any): ApiComment {
+  return {
+    id: raw.id,
+    userId: raw.user_id ?? raw.userId,
+    userName: raw.user_name || raw.userName || "User",
+    userAvatar: raw.user_avatar || raw.userAvatar,
+    text: raw.text || "",
+    videoId: raw.video_id ?? raw.videoId,
+    videoTitle: raw.video_title || raw.videoTitle,
+    likes: raw.likes ?? 0,
+    isLiked: raw.is_liked ?? raw.isLiked ?? false,
+    replyCount: raw.reply_count ?? raw.replyCount ?? 0,
+    createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+  };
+}
+
+function transformReply(raw: any): ApiReply {
+  return {
+    id: raw.id,
+    commentId: raw.comment_id ?? raw.commentId,
+    text: raw.text || "",
+    userId: raw.user_id ?? raw.userId,
+    userName: raw.user_name || raw.userName || "User",
+    userAvatar: raw.user_avatar || raw.userAvatar,
+    createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+  };
+}
+
+function transformProfile(raw: any): ApiProfile {
+  return {
+    firstName: raw.first_name || raw.firstName || "",
+    lastName: raw.last_name || raw.lastName || "",
+    email: raw.email || "",
+    bio: raw.bio || "",
+    website: raw.website || "",
+    phone: raw.phone || "",
+    location: raw.location || "",
+    avatarUrl: raw.avatar_url || raw.avatarUrl || "",
+    socialLinks: {
+      twitter: raw.social_links?.twitter || raw.socialLinks?.twitter || "",
+      youtube: raw.social_links?.youtube || raw.socialLinks?.youtube || "",
+      instagram: raw.social_links?.instagram || raw.socialLinks?.instagram || "",
+    },
+    updatedAt: raw.updated_at || raw.updatedAt,
   };
 }
 
@@ -149,7 +248,12 @@ export async function getVideos(params?: {
     const json = await handleResponse<any>(res);
     return {
       data: (json.data || json.items || json || []).map(transformVideo),
-      pagination: json.pagination || { total: json.total || 0, page: json.page || 1, limit: json.limit || 20 },
+      pagination: {
+        total: json.total ?? json.pagination?.total ?? 0,
+        page: json.page ?? json.pagination?.page ?? 1,
+        limit: json.limit ?? json.pagination?.limit ?? 20,
+        totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
+      },
     };
   } catch (err) {
     console.warn("Video API request failed", err);
@@ -167,11 +271,11 @@ export async function getVideoDetails(id: number): Promise<ApiVideo> {
 
 export async function initiateVideoUpload(data: {
   title: string;
-  filename: string;
-  category?: string;
   description?: string;
+  category?: string;
   tags?: string[];
   status?: string;
+  filename?: string;
 }): Promise<{
   id: number;
   bunnyVideoId?: string;
@@ -185,7 +289,13 @@ export async function initiateVideoUpload(data: {
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/initiate`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      tags: data.tags || [],
+      status: data.status || "draft",
+    }),
   });
   const json = await handleResponse<any>(res);
   return {
@@ -228,7 +338,7 @@ export async function deleteVideo(id: number): Promise<{ success: boolean; messa
   return handleResponse(res);
 }
 
-export async function bulkDeleteVideos(videoIds: number[]): Promise<{ success: boolean; message?: string }> {
+export async function bulkDeleteVideos(videoIds: number[]): Promise<{ status?: string; success?: boolean }> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/bulk-delete`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -248,16 +358,14 @@ export async function publishVideo(id: number): Promise<ApiVideo> {
 
 export async function scheduleVideo(
   id: number,
-  schedule: { date: string; time: string; timezone?: string }
+  schedule: { date: string; time: string }
 ): Promise<ApiVideo> {
-  const userTimezone = schedule.timezone || (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "UTC";
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${id}/schedule`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
       date: schedule.date,
       time: schedule.time,
-      timezone: userTimezone,
     }),
   });
   const json = await handleResponse<any>(res);
@@ -268,7 +376,7 @@ export async function uploadThumbnail(
   videoId: number,
   slot: number,
   file: File
-): Promise<{ success: boolean; message?: string }> {
+): Promise<{ status?: string; success?: boolean }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -284,10 +392,10 @@ export async function uploadThumbnail(
 export async function selectMainThumbnail(
   videoId: number,
   slotOrUrl: number | string
-): Promise<{ success: boolean }> {
+): Promise<{ status?: string; success?: boolean }> {
   const payload = typeof slotOrUrl === "string"
-    ? { selected_main_thumbnail: slotOrUrl, slot: 0 }
-    : { slot: slotOrUrl };
+    ? { selected_main_thumbnail: slotOrUrl }
+    : { selected_main_thumbnail: String(slotOrUrl), slot: slotOrUrl };
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${videoId}/thumbnails/select-main`, {
     method: "PATCH",
     headers: getAuthHeaders(),
@@ -298,12 +406,12 @@ export async function selectMainThumbnail(
 
 export async function deleteThumbnail(
   videoId: number,
-  slot: number
-): Promise<{ success: boolean }> {
+  slot?: number
+): Promise<{ status?: string; success?: boolean }> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${videoId}/thumbnails`, {
     method: "DELETE",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ slot }),
+    body: slot !== undefined ? JSON.stringify({ slot }) : undefined,
   });
   return handleResponse(res);
 }
@@ -329,7 +437,12 @@ export async function getPlaylists(params?: {
     const json = await handleResponse<any>(res);
     return {
       data: (json.data || json.items || json || []).map(transformPlaylist),
-      pagination: json.pagination || { total: json.total || 0, page: json.page || 1, limit: json.limit || 20 },
+      pagination: {
+        total: json.total ?? json.pagination?.total ?? 0,
+        page: json.page ?? json.pagination?.page ?? 1,
+        limit: json.limit ?? json.pagination?.limit ?? 20,
+        totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
+      },
     };
   } catch (err) {
     console.warn("Playlist API request failed", err);
@@ -346,18 +459,20 @@ export async function getPlaylistDetails(id: number): Promise<ApiPlaylist> {
 }
 
 export async function createPlaylist(data: {
-  title: string;
+  name?: string;
+  title?: string;
   description?: string;
   videoIds?: number[];
+  video_ids?: number[];
 }): Promise<ApiPlaylist> {
+  const nameVal = data.name || data.title || "Untitled Playlist";
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
-      name: data.title,
-      title: data.title,
-      description: data.description,
-      video_ids: data.videoIds || [],
+      name: nameVal,
+      description: data.description || "",
+      video_ids: data.video_ids || data.videoIds || [],
     }),
   });
   const json = await handleResponse<any>(res);
@@ -366,14 +481,14 @@ export async function createPlaylist(data: {
 
 export async function updatePlaylist(
   id: number,
-  data: { title?: string; description?: string }
+  data: { name?: string; title?: string; description?: string }
 ): Promise<ApiPlaylist> {
+  const nameVal = data.name || data.title || "";
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({
-      name: data.title,
-      title: data.title,
+      name: nameVal,
       description: data.description,
     }),
   });
@@ -381,7 +496,7 @@ export async function updatePlaylist(
   return transformPlaylist(json);
 }
 
-export async function deletePlaylist(id: number): Promise<{ success: boolean }> {
+export async function deletePlaylist(id: number): Promise<{ status?: string; success?: boolean }> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
@@ -392,7 +507,7 @@ export async function deletePlaylist(id: number): Promise<{ success: boolean }> 
 export async function uploadPlaylistBanner(
   playlistId: number,
   file: File
-): Promise<{ success: boolean }> {
+): Promise<{ status?: string; success?: boolean }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -420,18 +535,23 @@ export async function getPlaylistVideos(
   const json = await handleResponse<any>(res);
   return {
     data: (json.data || json.items || json || []).map(transformVideo),
-    pagination: json.pagination,
+    pagination: {
+      total: json.total ?? json.pagination?.total ?? 0,
+      page: json.page ?? json.pagination?.page ?? 1,
+      limit: json.limit ?? json.pagination?.limit ?? 20,
+      totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
+    },
   };
 }
 
 export async function addVideosToPlaylist(
   playlistId: number,
   videoIds: number[]
-): Promise<{ success: boolean; videoCount?: number }> {
+): Promise<{ status?: string; success?: boolean }> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ video_ids: videoIds, videoIds }),
+    body: JSON.stringify({ video_ids: videoIds }),
   });
   return handleResponse(res);
 }
@@ -439,7 +559,7 @@ export async function addVideosToPlaylist(
 export async function removeVideoFromPlaylist(
   playlistId: number,
   videoId: number
-): Promise<{ success: boolean; videoCount?: number }> {
+): Promise<{ status?: string; success?: boolean }> {
   const res = await fetch(
     `${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos/${videoId}`,
     {
@@ -453,23 +573,11 @@ export async function removeVideoFromPlaylist(
 export async function bulkRemoveVideosFromPlaylist(
   playlistId: number,
   videoIds: number[]
-): Promise<{ success: boolean; videoCount?: number }> {
+): Promise<{ status?: string; success?: boolean }> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos`, {
     method: "DELETE",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ video_ids: videoIds, videoIds }),
-  });
-  return handleResponse(res);
-}
-
-export async function reorderPlaylistVideos(
-  playlistId: number,
-  videoIds: number[]
-): Promise<{ success: boolean }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos/reorder`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ video_ids: videoIds, videoIds }),
+    body: JSON.stringify({ video_ids: videoIds }),
   });
   return handleResponse(res);
 }
@@ -492,6 +600,180 @@ export async function getAvailableVideosForPlaylist(
   const json = await handleResponse<any>(res);
   return {
     data: (json.data || json.items || json || []).map(transformVideo),
-    pagination: json.pagination,
+    pagination: {
+      total: json.total ?? json.pagination?.total ?? 0,
+      page: json.page ?? json.pagination?.page ?? 1,
+      limit: json.limit ?? json.pagination?.limit ?? 20,
+      totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
+    },
+  };
+}
+
+export async function reorderPlaylistVideos(
+  playlistId: number,
+  videoOrders: { video_id: number; order: number }[]
+): Promise<{ status?: string; success?: boolean }> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos/reorder`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ video_orders: videoOrders }),
+  });
+  return handleResponse(res);
+}
+
+// ── Comments API ───────────────────────────────────────────────────────────
+
+export async function getAdminComments(params?: {
+  category?: string;
+  videoId?: number;
+  date?: string;
+  minLikes?: number;
+  search?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: ApiComment[]; pagination?: any }> {
+  try {
+    const query = new URLSearchParams();
+    if (params?.category) query.append("category", params.category);
+    if (params?.videoId) query.append("videoId", params.videoId.toString());
+    if (params?.date) query.append("date", params.date);
+    if (params?.minLikes) query.append("minLikes", params.minLikes.toString());
+    if (params?.search) query.append("search", params.search);
+    if (params?.sort) query.append("sort", params.sort);
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
+
+    const res = await fetch(`${BASE_URL}/api/v1/admin/comments?${query.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await handleResponse<any>(res);
+    return {
+      data: (json.data || json.items || json || []).map(transformComment),
+      pagination: {
+        total: json.total ?? json.pagination?.total ?? 0,
+        page: json.page ?? json.pagination?.page ?? 1,
+        limit: json.limit ?? json.pagination?.limit ?? 20,
+        totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
+      },
+    };
+  } catch (err) {
+    console.warn("Comments API request failed", err);
+    throw err;
+  }
+}
+
+export async function getCommentReplies(
+  commentId: number,
+  params?: { sort?: string; page?: number; limit?: number }
+): Promise<{ data: ApiReply[]; pagination?: any }> {
+  const query = new URLSearchParams();
+  if (params?.sort) query.append("sort", params.sort);
+  if (params?.page) query.append("page", params.page.toString());
+  if (params?.limit) query.append("limit", params.limit.toString());
+
+  const res = await fetch(
+    `${BASE_URL}/api/v1/admin/comments/${commentId}/replies?${query.toString()}`,
+    { headers: getAuthHeaders() }
+  );
+  const json = await handleResponse<any>(res);
+  return {
+    data: (json.data || json.items || json || []).map(transformReply),
+    pagination: {
+      total: json.total ?? json.pagination?.total ?? 0,
+      page: json.page ?? json.pagination?.page ?? 1,
+      limit: json.limit ?? json.pagination?.limit ?? 20,
+      totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
+    },
+  };
+}
+
+export async function postCommentReply(
+  commentId: number,
+  text: string
+): Promise<ApiReply> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/comments/${commentId}/reply`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text }),
+  });
+  const json = await handleResponse<any>(res);
+  return transformReply(json);
+}
+
+export async function toggleCommentLike(
+  commentId: number
+): Promise<{ status: string; isLiked: boolean; likes: number }> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/comments/${commentId}/like`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  const json = await handleResponse<any>(res);
+  return {
+    status: json.status || "success",
+    isLiked: json.is_liked ?? json.isLiked ?? false,
+    likes: json.likes ?? 0,
+  };
+}
+
+export async function deleteComment(
+  commentId: number
+): Promise<{ status?: string; success?: boolean }> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/comments/${commentId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// ── Settings / Profile API ─────────────────────────────────────────────────
+
+export async function getCreatorProfile(): Promise<ApiProfile> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await handleResponse<any>(res);
+    return transformProfile(json);
+  } catch (err) {
+    console.warn("Profile API request failed", err);
+    throw err;
+  }
+}
+
+export async function updateCreatorProfile(
+  data: Partial<{
+    first_name: string;
+    last_name: string;
+    bio: string;
+    website: string;
+    phone: string;
+    location: string;
+    social_links: ApiSocialLinks;
+  }>
+): Promise<{ status?: string; success?: boolean }> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
+export async function uploadAvatarPhoto(
+  file: File
+): Promise<{ avatarUrl: string }> {
+  const formData = new FormData();
+  formData.append("photo", file);
+
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/v1/admin/profile/photo`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  const json = await handleResponse<any>(res);
+  return {
+    avatarUrl: json.avatar_url || json.avatarUrl || "",
   };
 }
