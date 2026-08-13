@@ -18,7 +18,7 @@ import {
 } from "../components/ui/select";
 import {
   getAdminComments, getCommentReplies, postCommentReply, toggleCommentLike, deleteComment,
-  ApiComment, ApiReply,
+  getCategories, ApiComment, ApiReply, ApiCategory,
 } from "../services/apiService";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -174,11 +174,22 @@ export default function Community() {
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    getCategories({ simple: true })
+      .then((cats) => {
+        if (cats && cats.length > 0) {
+          setDynamicCategories(cats.map((c) => c.name));
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch category list for community filters", err));
+  }, []);
 
   // Dialog & Thread states
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [videoPickerOpen, setVideoPickerOpen] = useState(false);
-  const [replyOpenId, setReplyOpenId] = useState<number | null>(null);
+  const [replyOpenId, setReplyOpenId] = useState<number | string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
   
@@ -288,20 +299,35 @@ export default function Community() {
     }
   };
 
-  // Post Creator Reply
-  const handleSendReply = async (commentId: number) => {
+  const handleToggleReplyLike = async (parentCommentId: number, replyId: number) => {
+    try {
+      const res = await toggleCommentLike(replyId);
+      setRepliesCache((prev) => ({
+        ...prev,
+        [parentCommentId]: (prev[parentCommentId] || []).map((r) =>
+          r.id === replyId ? { ...r, isLiked: res.isLiked, likes: res.likes } : r
+        ),
+      }));
+    } catch (err) {
+      console.error("Failed to toggle reply like", err);
+    }
+  };
+
+  // Post Creator Reply (supports top-level comment or sub-comment target)
+  const handleSendReply = async (parentCommentId: number, targetReplyId?: number) => {
     if (!replyText.trim()) return;
     setSubmittingReply(true);
     try {
-      const newReply = await postCommentReply(commentId, replyText);
+      const targetId = targetReplyId ?? parentCommentId;
+      const newReply = await postCommentReply(targetId, replyText);
       setRepliesCache((prev) => ({
         ...prev,
-        [commentId]: [...(prev[commentId] || []), newReply],
+        [parentCommentId]: [...(prev[parentCommentId] || []), newReply],
       }));
       setComments((prev) =>
-        prev.map((c) => (c.id === commentId ? { ...c, replyCount: c.replyCount + 1 } : c))
+        prev.map((c) => (c.id === parentCommentId ? { ...c, replyCount: c.replyCount + 1 } : c))
       );
-      setOpenRepliesId(commentId);
+      setOpenRepliesId(parentCommentId);
       setReplyText("");
       setReplyOpenId(null);
     } catch (err) {
@@ -445,7 +471,9 @@ export default function Community() {
                       <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        {(dynamicCategories.length > 0 ? dynamicCategories : categories).map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -561,14 +589,14 @@ export default function Community() {
                           className={`flex items-center gap-1.5 font-medium transition-colors ${comment.isLiked ? "text-purple-600" : "hover:text-purple-600"}`}
                         >
                           <Heart className={`h-4 w-4 ${comment.isLiked ? "fill-purple-600" : ""}`} />
-                          {comment.likes} Likes
+                          {comment.likes}
                         </button>
                         <button
                           onClick={() => handleToggleReplies(comment.id)}
                           className="flex items-center gap-1.5 font-medium hover:text-purple-600 transition-colors"
                         >
                           <MessageCircle className="h-4 w-4" />
-                          {comment.replyCount} Replies
+                          {comment.replyCount}
                         </button>
                       </div>
 
@@ -619,15 +647,89 @@ export default function Community() {
                         ) : (repliesCache[comment.id] || []).length === 0 ? (
                           <p className="text-xs text-slate-400 py-1">No replies in this thread yet.</p>
                         ) : (
-                          (repliesCache[comment.id] || []).map((reply) => (
-                            <div key={reply.id} className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg text-xs space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">{reply.userName}</span>
-                                <span className="text-[10px] text-slate-400">{new Date(reply.createdAt).toLocaleDateString()}</span>
+                          (repliesCache[comment.id] || []).map((reply) => {
+                            const isSubReplyOpen = replyOpenId === `reply-${reply.id}`;
+                            return (
+                              <div key={reply.id} className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg text-xs space-y-1.5 border border-slate-200/50 dark:border-slate-800/60">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                      {reply.userName}
+                                      {reply.isCreator && (
+                                        <Badge className="bg-purple-950/80 border-purple-800 text-purple-300 text-[10px] px-1.5 py-0">
+                                          Creator
+                                        </Badge>
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] text-slate-400">{new Date(reply.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">{reply.text}</p>
+
+                                {/* Subcomment stats and reply button bar */}
+                                <div className="flex items-center justify-between pt-1 text-xs text-slate-500">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleReplyLike(comment.id, reply.id)}
+                                      className={`flex items-center gap-1.5 font-medium transition-colors cursor-pointer ${reply.isLiked ? "text-purple-600 dark:text-purple-400" : "hover:text-purple-600 dark:hover:text-purple-400"}`}
+                                    >
+                                      <Heart className={`h-3.5 w-3.5 ${reply.isLiked ? "fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" : ""}`} />
+                                      {reply.likes || 0}
+                                    </button>
+                                  </div>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs text-purple-600 hover:text-purple-700 gap-1 cursor-pointer"
+                                    onClick={() => {
+                                      if (isSubReplyOpen) {
+                                        setReplyOpenId(null);
+                                        setReplyText("");
+                                      } else {
+                                        setReplyOpenId(`reply-${reply.id}`);
+                                        setReplyText(`@${reply.userName} `);
+                                      }
+                                    }}
+                                  >
+                                    <CornerDownRight className="h-3.5 w-3.5" /> Reply
+                                  </Button>
+                                </div>
+
+                                {/* Inline sub-comment reply composer */}
+                                {isSubReplyOpen && (
+                                  <div className="mt-2 flex gap-2">
+                                    <Input
+                                      placeholder={`Reply to ${reply.userName}...`}
+                                      value={replyText}
+                                      onChange={(e) => setReplyText(e.target.value)}
+                                      className="flex-1 h-8 text-xs bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="sm"
+                                      disabled={!replyText.trim() || submittingReply}
+                                      onClick={() => handleSendReply(comment.id, reply.id)}
+                                      className="bg-purple-600 text-white hover:bg-purple-700 h-8 px-3 text-xs cursor-pointer"
+                                    >
+                                      {submittingReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-slate-400 cursor-pointer"
+                                      onClick={() => { setReplyOpenId(null); setReplyText(""); }}
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
-                              <p className="text-slate-600 dark:text-slate-300">{reply.text}</p>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     )}

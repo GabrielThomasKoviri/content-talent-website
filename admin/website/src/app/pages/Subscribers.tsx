@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "../components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../components/ui/table";
-import { Search, MoreVertical, Mail, UserX, Crown, Users, TrendingUp, DollarSign, SlidersHorizontal, X, Calendar } from "lucide-react";
+import { Search, MoreVertical, Mail, UserX, Crown, Users, TrendingUp, DollarSign, SlidersHorizontal, X, Calendar, Loader2 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "../components/ui/dialog";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { getSubscribers, ApiSubscriber } from "../services/apiService";
 
 const subscriberStats = [
   { name: "Total Subscribers", value: "12,543", icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
@@ -31,7 +32,7 @@ const planChartData = [
   { name: "Trial", value: 1245, color: "#10b981" },
 ];
 
-const subscribers = [
+const initialSubscribers = [
   { id: 1, name: "John Anderson", email: "john.anderson@example.com", plan: "Premium", status: "Active", joinDate: "2024-01-15", revenue: "$29.99" },
   { id: 2, name: "Sarah Miller", email: "sarah.miller@example.com", plan: "Basic", status: "Active", joinDate: "2024-02-20", revenue: "$9.99" },
   { id: 3, name: "Mike Johnson", email: "mike.johnson@example.com", plan: "Premium", status: "Active", joinDate: "2024-01-08", revenue: "$29.99" },
@@ -41,8 +42,6 @@ const subscribers = [
   { id: 7, name: "David Martinez", email: "david.martinez@example.com", plan: "Basic", status: "Trial", joinDate: "2024-06-18", revenue: "$0.00" },
   { id: 8, name: "Rachel Green", email: "rachel.green@example.com", plan: "Premium", status: "Active", joinDate: "2023-12-20", revenue: "$29.99" },
 ];
-
-const uniqueDates = [...new Set(subscribers.map((s) => s.joinDate))].sort((a, b) => b.localeCompare(a));
 
 function DatePickerDialog({ open, onClose, value, onChange }: {
   open: boolean; onClose: () => void; value: string; onChange: (v: string) => void;
@@ -68,12 +67,27 @@ function DatePickerDialog({ open, onClose, value, onChange }: {
 }
 
 export default function Subscribers() {
+  const [subscribers, setSubscribers] = useState<ApiSubscriber[]>(initialSubscribers);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterPlan, setFilterPlan] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    getSubscribers()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setSubscribers(data);
+        }
+      })
+      .catch((err) => console.warn("Failed to load subscribers", err))
+      .finally(() => setLoading(false));
+  }, []);
+
 
   const activeCount = [filterPlan, filterStatus].filter((v) => v !== "all").length + (filterDate ? 1 : 0);
 
@@ -88,28 +102,33 @@ export default function Subscribers() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <DatePickerDialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} value={filterDate} onChange={setFilterDate} />
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-slate-800/80 pb-6">
         <div>
-          <h1 className="text-3xl font-bold">Subscribers</h1>
-          <p className="text-gray-600 mt-1">Manage your subscriber base and memberships</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            Subscribers & Members
+            <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded-full font-mono font-medium">
+              LIVE USERS
+            </span>
+          </h1>
+          <p className="text-slate-400 mt-1 text-sm">Monitor registered mobile users, subscription tiers, and engagement status.</p>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-3">
         {subscriberStats.map((stat) => (
-          <Card key={stat.name}>
+          <Card key={stat.name} className="bg-slate-900/60 backdrop-blur-xl border-slate-800/80 shadow-xl hover:border-purple-500/30 transition-all">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className={`${stat.bgColor} ${stat.color} p-3 rounded-lg`}>
+                <div className={`${stat.bgColor} ${stat.color} p-3.5 rounded-xl border border-white/5`}>
                   <stat.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <div className="text-sm text-gray-600">{stat.name}</div>
+                  <div className="text-2xl font-bold text-white tracking-tight">{stat.value}</div>
+                  <div className="text-xs font-medium text-slate-400 mt-0.5">{stat.name}</div>
                 </div>
               </div>
             </CardContent>
@@ -118,35 +137,35 @@ export default function Subscribers() {
       </div>
 
       {/* Pie chart by plan */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Subscribers by Plan</CardTitle>
+      <Card className="bg-slate-900/60 backdrop-blur-xl border-slate-800/80 shadow-xl">
+        <CardHeader className="border-b border-slate-800/60 pb-4">
+          <CardTitle className="text-lg font-semibold text-white">Subscribers Distribution by Tier</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <ResponsiveContainer width="100%" height={220} className="max-w-xs">
               <PieChart>
-                <Pie data={planChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value">
+                <Pie data={planChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value" paddingAngle={3}>
                   {planChartData.map((entry, i) => (
-                    <Cell key={`cell-${i}`} fill={entry.color} />
+                    <Cell key={`cell-${i}`} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                <Tooltip formatter={(v: number) => v.toLocaleString()} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#fff' }} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="flex-1 space-y-3 w-full">
+            <div className="flex-1 space-y-3.5 w-full">
               {planChartData.map((d) => (
-                <div key={d.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div key={d.name} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2.5">
                     <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                    <span className="text-sm font-medium">{d.name}</span>
+                    <span className="text-slate-200 font-medium text-sm">{d.name} Membership</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${Math.round((d.value / 12543) * 100)}%`, backgroundColor: d.color }} />
+                    <div className="w-36 h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round((d.value / 12543) * 100)}%`, backgroundColor: d.color }} />
                     </div>
-                    <span className="text-sm text-gray-600 w-16 text-right">{d.value.toLocaleString()}</span>
-                    <span className="text-xs text-gray-400 w-10 text-right">{Math.round((d.value / 12543) * 100)}%</span>
+                    <span className="text-slate-300 font-mono w-16 text-right font-semibold">{d.value.toLocaleString()}</span>
+                    <span className="text-slate-500 font-mono w-10 text-right">{Math.round((d.value / 12543) * 100)}%</span>
                   </div>
                 </div>
               ))}
@@ -156,39 +175,42 @@ export default function Subscribers() {
       </Card>
 
       {/* Subscriber table with working filters */}
-      <Card>
-        <CardHeader className="border-b">
-          <div className="space-y-3">
+      <Card className="bg-slate-900/60 backdrop-blur-xl border-slate-800/80 shadow-xl overflow-hidden">
+        <CardHeader className="border-b border-slate-800/60 pb-4">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <CardTitle>All Subscribers</CardTitle>
-                <span className="text-sm text-gray-500">{filtered.length} of {subscribers.length}</span>
+                <CardTitle className="text-lg font-semibold text-white">Active Subscriber Roster</CardTitle>
+                <span className="text-xs bg-slate-800 text-slate-400 border border-slate-700 px-2.5 py-0.5 rounded-full">
+                  {filtered.length} of {subscribers.length} showing
+                </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input type="search" placeholder="Search subscribers..." className="pl-9 w-56"
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Input type="search" placeholder="Search subscribers..." className="pl-9 w-60 bg-slate-950 text-slate-100 placeholder:text-slate-500 border border-slate-800 focus:border-purple-500/50 rounded-xl"
                     value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
-                <Button variant={showFilters ? "default" : "outline"} className="gap-2"
-                  onClick={() => setShowFilters(!showFilters)}>
+                <Button variant={showFilters ? "default" : "outline"} className={`gap-2 rounded-xl text-xs font-semibold ${
+                  showFilters ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
+                }`} onClick={() => setShowFilters(!showFilters)}>
                   <SlidersHorizontal className="h-4 w-4" />
                   Filters
                   {activeCount > 0 && (
-                    <span className="ml-1 bg-white text-purple-700 rounded-full text-xs font-bold px-1.5">{activeCount}</span>
+                    <span className="ml-1 bg-white text-purple-900 rounded-full text-xs font-bold px-1.5">{activeCount}</span>
                   )}
                 </Button>
               </div>
             </div>
 
             {showFilters && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+                <div className="grid grid-cols-3 gap-4 mb-3">
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Plan</Label>
+                    <Label className="text-xs mb-1.5 block text-slate-400">Plan</Label>
                     <Select value={filterPlan} onValueChange={setFilterPlan}>
-                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-9 text-xs bg-slate-900 border-slate-800 text-slate-200"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                         <SelectItem value="all">All Plans</SelectItem>
                         <SelectItem value="Premium">Premium</SelectItem>
                         <SelectItem value="Basic">Basic</SelectItem>
@@ -196,10 +218,10 @@ export default function Subscribers() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Status</Label>
+                    <Label className="text-xs mb-1.5 block text-slate-400">Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-9 text-xs bg-slate-900 border-slate-800 text-slate-200"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="Active">Active</SelectItem>
                         <SelectItem value="Trial">Trial</SelectItem>
@@ -208,20 +230,20 @@ export default function Subscribers() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Join Date</Label>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm w-full justify-start"
+                    <Label className="text-xs mb-1.5 block text-slate-400">Join Date</Label>
+                    <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs w-full justify-start bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800"
                       onClick={() => setDatePickerOpen(true)}>
-                      <Calendar className="h-3.5 w-3.5" />
+                      <Calendar className="h-3.5 w-3.5 text-purple-400" />
                       {filterDate || "Pick date"}
                       {filterDate && (
-                        <X className="h-3 w-3 ml-auto text-gray-400 hover:text-red-500"
+                        <X className="h-3 w-3 ml-auto text-slate-500 hover:text-rose-400"
                           onClick={(e) => { e.stopPropagation(); setFilterDate(""); }} />
                       )}
                     </Button>
                   </div>
                 </div>
                 {activeCount > 0 && (
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-gray-500 h-8" onClick={resetFilters}>
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-slate-400 hover:text-white h-7" onClick={resetFilters}>
                     <X className="h-3 w-3" />Clear filters
                   </Button>
                 )}
@@ -231,60 +253,69 @@ export default function Subscribers() {
         </CardHeader>
 
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">No subscribers match your filters</p>
-              <Button variant="link" className="text-purple-600 mt-1" onClick={resetFilters}>Clear all filters</Button>
+          {loading ? (
+            <div className="text-center py-16 text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-purple-400" /> Loading subscriber records...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-slate-500">
+              <Users className="h-10 w-10 mx-auto mb-3 opacity-30 text-purple-400" />
+              <p className="font-medium text-slate-300">No subscribers match your filters</p>
+              <Button variant="link" className="text-purple-400 mt-1" onClick={resetFilters}>Clear all filters</Button>
             </div>
           ) : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Subscriber</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Join Date</TableHead>
-                  <TableHead>Monthly Revenue</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+              <TableHeader className="bg-slate-950/80 border-b border-slate-800">
+                <TableRow className="border-slate-800/80 hover:bg-transparent">
+                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Subscriber</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Plan</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Status</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Join Date</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Monthly Revenue</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase font-mono text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((subscriber) => (
-                  <TableRow key={subscriber.id}>
-                    <TableCell>
+                  <TableRow key={subscriber.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                    <TableCell className="py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 via-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
                           {subscriber.name.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-medium">{subscriber.name}</div>
-                          <div className="text-sm text-gray-500">{subscriber.email}</div>
+                          <div className="font-semibold text-sm text-slate-100">{subscriber.name}</div>
+                          <div className="text-xs text-slate-400 font-mono">{subscriber.email}</div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={subscriber.plan === "Premium" ? "default" : "secondary"} className="gap-1">
-                        {subscriber.plan === "Premium" && <Crown className="h-3 w-3" />}
+                    <TableCell className="py-3.5">
+                      <Badge variant="outline" className={`gap-1 font-mono text-xs border ${
+                        subscriber.plan === "Premium" ? "bg-purple-500/10 text-purple-300 border-purple-500/30" : "bg-blue-500/10 text-blue-300 border-blue-500/30"
+                      }`}>
+                        {subscriber.plan === "Premium" && <Crown className="h-3 w-3 text-purple-400" />}
                         {subscriber.plan}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={subscriber.status === "Active" ? "default" : subscriber.status === "Trial" ? "outline" : "secondary"}>
+                    <TableCell className="py-3.5">
+                      <Badge variant="outline" className={`font-mono text-xs border ${
+                        subscriber.status === "Active" ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" :
+                        subscriber.status === "Trial" ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-slate-800 text-slate-400 border-slate-700"
+                      }`}>
                         {subscriber.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-gray-600">{subscriber.joinDate}</TableCell>
-                    <TableCell className="font-semibold text-green-600">{subscriber.revenue}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="py-3.5 text-slate-400 font-mono text-xs">{subscriber.joinDate}</TableCell>
+                    <TableCell className="py-3.5 font-mono text-xs font-bold text-emerald-400">{subscriber.revenue}</TableCell>
+                    <TableCell className="py-3.5 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem><Mail className="mr-2 h-4 w-4" />Send Email</DropdownMenuItem>
-                          <DropdownMenuItem><Crown className="mr-2 h-4 w-4" />Change Plan</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600"><UserX className="mr-2 h-4 w-4" />Suspend</DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+                          <DropdownMenuItem className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"><Mail className="mr-2 h-4 w-4 text-purple-400" />Send Email</DropdownMenuItem>
+                          <DropdownMenuItem className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"><Crown className="mr-2 h-4 w-4 text-amber-400" />Change Plan</DropdownMenuItem>
+                          <DropdownMenuItem className="text-rose-400 hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"><UserX className="mr-2 h-4 w-4" />Suspend Account</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

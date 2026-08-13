@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Hls from "hls.js";
 import * as tus from "tus-js-client";
 import {
   getVideos, getVideoDetails, initiateVideoUpload, updateVideo,
   deleteVideo, bulkDeleteVideos, publishVideo, scheduleVideo,
-  uploadThumbnail, selectMainThumbnail, getPlaylists, createPlaylist, updatePlaylist,
+  uploadThumbnail, selectMainThumbnail, getPlaylists, getPlaylistDetails, createPlaylist, updatePlaylist,
   deletePlaylist, addVideosToPlaylist, removeVideoFromPlaylist,
   bulkRemoveVideosFromPlaylist, uploadPlaylistBanner, getPlaylistVideos,
-  getAvailableVideosForPlaylist, reorderPlaylistVideos, ApiVideo, ApiPlaylist
+  getAvailableVideosForPlaylist, reorderPlaylistVideos, getCategories,
+  getAdminComments, postAdminVideoComment, getCommentReplies, postCommentReply,
+  toggleCommentLike, deleteComment as apiDeleteComment, ApiVideo, ApiPlaylist, ApiComment, ApiReply
 } from "../services/apiService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -34,7 +36,9 @@ import {
   Plus, Search, MoreVertical, Eye, Edit, Trash2, Upload,
   Video, FileText, X, Calendar, Clock, ListVideo,
   ChevronDown, ImagePlus, SlidersHorizontal, Play,
-  ArrowLeft, Pencil, CheckSquare, RefreshCw, Loader2, AlertCircle, FolderOpen, CheckCircle
+  ArrowLeft, Pencil, CheckSquare, RefreshCw, Loader2, AlertCircle, FolderOpen, CheckCircle,
+  GripVertical, ArrowUp, ArrowDown, Download, Subtitles, Maximize2, Minimize2,
+  MessageSquare, Send, Heart, CornerDownRight, MessageCircle
 } from "lucide-react";
 
 
@@ -55,6 +59,11 @@ type Content = {
   thumbnailUrl?: string;
   videoUrl?: string;
   encodeProgress?: number;
+  captionsData?: Array<{ srclang?: string; label?: string; is_default?: boolean; isDefault?: boolean; url?: string }>;
+  captionUrl?: string;
+  captionSrclang?: string;
+  captionLabel?: string;
+  downloadUrls?: Array<{ resolution: string; label: string; url: string }>;
 };
 
 type Playlist = {
@@ -107,16 +116,16 @@ function TagInput({ tags, setTags }: { tags: string[]; setTags: (t: string[]) =>
     }
   };
   return (
-    <div className="border rounded-md p-2 flex flex-wrap gap-1.5 min-h-[44px] focus-within:ring-2 focus-within:ring-ring bg-white">
+    <div className="border border-slate-800 rounded-xl p-2 flex flex-wrap gap-1.5 min-h-[44px] focus-within:ring-2 focus-within:ring-purple-500/30 bg-slate-950/90 text-slate-100">
       {tags.map((t) => (
-        <span key={t} className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 text-xs font-medium px-2.5 py-1 rounded-full">
+        <span key={t} className="inline-flex items-center gap-1 bg-purple-950/80 border border-purple-800/60 text-purple-300 text-xs font-medium px-2.5 py-1 rounded-full">
           #{t}
-          <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500"><X className="h-3 w-3" /></button>
+          <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-rose-400"><X className="h-3 w-3" /></button>
         </span>
       ))}
       <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey}
         placeholder={tags.length === 0 ? "Add tags (press Enter or Space)..." : ""}
-        className="flex-1 min-w-[140px] text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400 font-medium" />
+        className="flex-1 min-w-[140px] text-sm outline-none bg-transparent text-slate-100 placeholder:text-slate-500 font-medium" />
     </div>
   );
 }
@@ -170,7 +179,7 @@ function ThumbnailSlot({
           </div>
         )}
       </label>
-      
+
       <div className="mt-1 flex items-center justify-between w-full px-1">
         <span className="text-[10px] font-semibold text-slate-600 truncate">{label}</span>
         {isMain ? (
@@ -262,6 +271,11 @@ function AddVideosDialog({ open, onClose, excludeIds, allVideos, playlistId, onA
             description: item.description || "",
             tags: item.tags || [],
             thumbnailUrl: item.thumbnailUrl,
+            captionsData: item.captionsData,
+            captionUrl: item.captionUrl,
+            captionSrclang: item.captionSrclang,
+            captionLabel: item.captionLabel,
+            downloadUrls: item.downloadUrls,
           }));
           setApiAvailable(mapped);
         })
@@ -277,9 +291,9 @@ function AddVideosDialog({ open, onClose, excludeIds, allVideos, playlistId, onA
   const available = apiAvailable !== null
     ? apiAvailable
     : allVideos.filter(
-        (c) => !excludeIds.includes(c.id) &&
-          c.title.toLowerCase().includes(search.toLowerCase())
-      );
+      (c) => !excludeIds.includes(c.id) &&
+        c.title.toLowerCase().includes(search.toLowerCase())
+    );
 
   const toggle = (id: number) =>
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -437,8 +451,19 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [dynamicCategories, setDynamicCategories] = useState<{ id: number; name: string }[]>([]);
+
   useEffect(() => {
     setUploadProgress(null);
+    if (open) {
+      getCategories({ simple: true })
+        .then((cats) => {
+          if (cats && cats.length > 0) {
+            setDynamicCategories(cats.map((c) => ({ id: c.id, name: c.name })));
+          }
+        })
+        .catch((err) => console.warn("Failed to load category list for upload form", err));
+    }
     if (content && open) {
       setTitle(content.title || "");
       setCategory(content.category || "Education");
@@ -480,7 +505,8 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
   const togglePlaylist = (id: number) =>
     setSelectedPlaylists((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
-  const handleSave = async (status: "published" | "draft" | "scheduled") => {
+  const handleSave = async (statusArg: string) => {
+    const status = statusArg.toLowerCase();
     setError(null);
     setUploadProgress(null);
     if (!title.trim()) {
@@ -636,13 +662,28 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
             <div><Label>Title</Label><Input placeholder="Enter content title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" /></div>
             <div>
               <Label>Category</Label>
-              <Select value={category.toLowerCase()} onValueChange={(val) => setCategory(val.charAt(0).toUpperCase() + val.slice(1))}>
+              <Select value={category.toLowerCase()} onValueChange={(val) => {
+                const matched = dynamicCategories.find((c) => c.name.toLowerCase() === val);
+                setCategory(matched ? matched.name : (val.charAt(0).toUpperCase() + val.slice(1)));
+              }}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="education">Education</SelectItem>
-                  <SelectItem value="programming">Programming</SelectItem>
-                  <SelectItem value="design">Design</SelectItem>
-                  <SelectItem value="technology">Technology</SelectItem>
+                  {dynamicCategories.length > 0 ? (
+                    dynamicCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.name.toLowerCase()}>
+                        {c.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value="education">Education</SelectItem>
+                      <SelectItem value="programming">Programming</SelectItem>
+                      <SelectItem value="design">Design</SelectItem>
+                      <SelectItem value="technology">Technology</SelectItem>
+                      <SelectItem value="entertainment">Entertainment</SelectItem>
+                      <SelectItem value="travel">Travel</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -811,35 +852,53 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
             )}
           </div>
           <DialogFooter className="mt-4 gap-2">
-            <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-            <Button variant="outline" onClick={() => handleSave("draft")} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save as Draft"}
-            </Button>
-            {scheduleMode ? (
-              <Button
-                disabled={!scheduleDate || !scheduleTime || submitting}
-                onClick={() => handleSave("scheduled")}
-                className="gap-2 bg-slate-900 text-white hover:bg-slate-800"
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
-                Confirm Schedule
-              </Button>
-            ) : (
-              <div className="flex">
-                <Button className="rounded-r-none bg-slate-900 hover:bg-slate-800 text-white" onClick={() => handleSave("published")} disabled={submitting}>
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish"}
+            {isEdit ? (
+              <>
+                <Button variant="outline" onClick={onClose} disabled={submitting}>
+                  Cancel
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild disabled={submitting}>
-                    <Button className="rounded-l-none px-2 bg-slate-950 hover:bg-black text-white border-l border-slate-800"><ChevronDown className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleSave("published")}><Video className="mr-2 h-4 w-4" />Publish Now</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setScheduleMode(true)}><Clock className="mr-2 h-4 w-4" />Schedule Publish</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-medium px-5 cursor-pointer"
+                  onClick={() => handleSave(content?.status || "published")}
+                  disabled={submitting}
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+                <Button variant="outline" onClick={() => handleSave("draft")} disabled={submitting}>
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save as Draft"}
+                </Button>
+                {scheduleMode ? (
+                  <Button
+                    disabled={!scheduleDate || !scheduleTime || submitting}
+                    onClick={() => handleSave("scheduled")}
+                    className="gap-2 bg-slate-900 text-white hover:bg-slate-800"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
+                    Confirm Schedule
+                  </Button>
+                ) : (
+                  <div className="flex">
+                    <Button className="rounded-r-none bg-slate-900 hover:bg-slate-800 text-white" onClick={() => handleSave("published")} disabled={submitting}>
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish"}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild disabled={submitting}>
+                        <Button className="rounded-l-none px-2 bg-slate-950 hover:bg-black text-white border-l border-slate-800"><ChevronDown className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSave("published")}><Video className="mr-2 h-4 w-4" />Publish Now</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setScheduleMode(true)}><Clock className="mr-2 h-4 w-4" />Schedule Publish</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+              </>
             )}
           </DialogFooter>
         </DialogContent>
@@ -867,23 +926,203 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
   const isEdit = !!playlist;
   const [title, setTitle] = useState(playlist?.title || "");
   const [description, setDescription] = useState(playlist?.description || "");
-  const [addVideosOpen, setAddVideosOpen] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(playlist?.thumbnailUrl);
   const [videoIds, setVideoIds] = useState<number[]>(playlist?.videoIds ?? []);
+  const [playlistVideosList, setPlaylistVideosList] = useState<Content[]>([]);
+  const [addVideosOpen, setAddVideosOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const bannerFileRef = useRef<HTMLInputElement | null>(null);
 
+  // Fetch playlist details & videos from API when editing
   useEffect(() => {
-    if (playlist) {
-      setTitle(playlist.title);
-      setDescription(playlist.description);
-      setVideoIds(playlist.videoIds || []);
-    } else {
+    if (open && playlist) {
+      setTitle(playlist.title || "");
+      setDescription(playlist.description || "");
+      setThumbnailUrl(playlist.thumbnailUrl);
+      const initialIds = playlist.videoIds || [];
+      setVideoIds(initialIds);
+
+      const loadFullDetails = async () => {
+        setLoadingData(true);
+        try {
+          let currentVideoIds = [...initialIds];
+
+          // 1. Call GET playlist details API
+          const detailsRes = await getPlaylistDetails(playlist.id);
+          if (detailsRes) {
+            if (detailsRes.title) setTitle(detailsRes.title);
+            if (detailsRes.description !== undefined) setDescription(detailsRes.description);
+            if (detailsRes.thumbnailUrl) setThumbnailUrl(detailsRes.thumbnailUrl);
+            if (Array.isArray(detailsRes.videoIds) && detailsRes.videoIds.length > 0) {
+              currentVideoIds = detailsRes.videoIds;
+            }
+          }
+
+          // 2. Call GET playlist videos API
+          let fetchedVideos: Content[] = [];
+          try {
+            const videosRes = await getPlaylistVideos(playlist.id);
+            if (videosRes?.data && Array.isArray(videosRes.data) && videosRes.data.length > 0) {
+              fetchedVideos = videosRes.data.map((item: ApiVideo) => ({
+                id: item.id,
+                title: item.title,
+                type: "Video",
+                category: item.category || "Education",
+                status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : "Draft",
+                views: item.views !== undefined ? item.views.toString() : "0",
+                duration: item.duration || "0:00",
+                date: item.date || new Date().toISOString().split("T")[0],
+                premium: !!item.premium,
+                description: item.description || "",
+                tags: item.tags || [],
+                thumbnailUrl: item.thumbnailUrl,
+                captionsData: item.captionsData,
+                captionUrl: item.captionUrl,
+                captionSrclang: item.captionSrclang,
+                captionLabel: item.captionLabel,
+                downloadUrls: item.downloadUrls,
+              }));
+            }
+          } catch (e) {
+            console.warn("getPlaylistVideos failed in dialog, using local fallback", e);
+          }
+
+          // Fallback to allVideos filtered by currentVideoIds if API returned empty
+          if (fetchedVideos.length === 0 && currentVideoIds.length > 0) {
+            fetchedVideos = allVideos.filter((c) => currentVideoIds.includes(c.id));
+          }
+
+          setPlaylistVideosList(fetchedVideos);
+
+          const combinedIds = Array.from(
+            new Set([...currentVideoIds, ...fetchedVideos.map((v) => v.id)])
+          );
+          setVideoIds(combinedIds);
+        } catch (err) {
+          console.warn("Failed to load playlist details in edit dialog:", err);
+          const fallback = allVideos.filter((c) => (playlist.videoIds || []).includes(c.id));
+          setPlaylistVideosList(fallback);
+          setVideoIds(fallback.map((v) => v.id));
+        } finally {
+          setLoadingData(false);
+        }
+      };
+
+      loadFullDetails();
+    } else if (open) {
       setTitle("");
       setDescription("");
+      setThumbnailUrl(undefined);
       setVideoIds([]);
+      setPlaylistVideosList([]);
     }
-  }, [playlist, open]);
+  }, [playlist, open, allVideos]);
 
-  const addedVideos = allVideos.filter((c) => videoIds.includes(c.id));
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // Combine fetched videos with allVideos state for rendering list in dialog (in exact videoIds order)
+  const displayedVideos = useMemo(() => {
+    const map = new Map<number, Content>();
+
+    // 1. Include all videos fetched from playlist
+    playlistVideosList.forEach((v) => map.set(v.id, v));
+
+    // 2. Include any videos from allVideos matching videoIds
+    allVideos.forEach((v) => {
+      if (videoIds.includes(v.id) && !map.has(v.id)) {
+        map.set(v.id, v);
+      }
+    });
+
+    // 3. Respect order specified by videoIds
+    if (videoIds.length > 0) {
+      const ordered: Content[] = [];
+      videoIds.forEach((id) => {
+        const item = map.get(id);
+        if (item) ordered.push(item);
+      });
+      map.forEach((item, id) => {
+        if (!videoIds.includes(id)) ordered.push(item);
+      });
+      return ordered;
+    }
+    return Array.from(map.values());
+  }, [playlistVideosList, allVideos, videoIds]);
+
+  const moveVideo = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex < 0 || fromIndex >= displayedVideos.length) return;
+    if (toIndex < 0 || toIndex >= displayedVideos.length) return;
+    if (fromIndex === toIndex) return;
+
+    const newDisplayed = [...displayedVideos];
+    const [movedItem] = newDisplayed.splice(fromIndex, 1);
+    newDisplayed.splice(toIndex, 0, movedItem);
+
+    const newIds = newDisplayed.map((v) => v.id);
+    setVideoIds(newIds);
+    setPlaylistVideosList(newDisplayed);
+
+    if (isEdit && playlist) {
+      try {
+        const payload = newIds.map((id, idx) => ({ video_id: id, order: idx + 1 }));
+        await reorderPlaylistVideos(playlist.id, payload);
+      } catch (err) {
+        console.error("Failed to reorder playlist videos:", err);
+      }
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setUploadingBanner(true);
+      try {
+        if (playlist) {
+          const res = await uploadPlaylistBanner(playlist.id, file);
+          if (res && (res as any).thumbnailUrl) {
+            setThumbnailUrl((res as any).thumbnailUrl);
+          } else if (res && (res as any).bannerUrl) {
+            setThumbnailUrl((res as any).bannerUrl);
+          } else {
+            setThumbnailUrl(URL.createObjectURL(file));
+          }
+        } else {
+          setThumbnailUrl(URL.createObjectURL(file));
+        }
+      } catch (err) {
+        console.error("Failed to upload thumbnail in edit dialog:", err);
+      } finally {
+        setUploadingBanner(false);
+      }
+    }
+  };
+
+  const handleRemoveVideo = async (id: number) => {
+    setVideoIds((prev) => prev.filter((x) => x !== id));
+    setPlaylistVideosList((prev) => prev.filter((x) => x.id !== id));
+    if (isEdit && playlist) {
+      try {
+        await removeVideoFromPlaylist(playlist.id, id);
+      } catch (err) {
+        console.error("Failed to remove video from playlist:", err);
+      }
+    }
+  };
+
+  const handleAddVideos = async (newIds: number[]) => {
+    const filtered = newIds.filter((id) => !videoIds.includes(id));
+    if (filtered.length === 0) return;
+    setVideoIds((prev) => [...prev, ...filtered]);
+    if (isEdit && playlist) {
+      try {
+        await addVideosToPlaylist(playlist.id, filtered);
+      } catch (err) {
+        console.error("Failed to add videos to playlist:", err);
+      }
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) return;
@@ -892,7 +1131,14 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
       if (isEdit && playlist) {
         await updatePlaylist(playlist.id, { title, description });
       } else {
-        await createPlaylist({ title, description, videoIds });
+        const newPl = await createPlaylist({ title, description, videoIds });
+        if (newPl && newPl.id && bannerFileRef.current?.files?.[0]) {
+          try {
+            await uploadPlaylistBanner(newPl.id, bannerFileRef.current.files[0]);
+          } catch (e) {
+            console.warn("Failed to upload banner for new playlist:", e);
+          }
+        }
       }
       onSaveSuccess();
       onClose();
@@ -910,66 +1156,233 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
         onClose={() => setAddVideosOpen(false)}
         excludeIds={videoIds}
         allVideos={allVideos}
-        onAdd={(ids) => setVideoIds((prev) => [...prev, ...ids.filter((id) => !prev.includes(id))])}
+        onAdd={handleAddVideos}
       />
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit Playlist Details" : "Create New Playlist"}</DialogTitle>
-            <DialogDescription>{isEdit ? "Update playlist title and description" : "Create a new structured video collection"}</DialogDescription>
+            <DialogTitle className="text-xl font-bold text-slate-100">
+              {isEdit ? "Edit Playlist Details" : "Create New Playlist"}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {isEdit ? "Update playlist info, thumbnail image, and manage video collection" : "Create a new structured video collection"}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Playlist Banner</Label>
-              <label className="mt-1.5 border-2 border-dashed border-slate-300 rounded-xl h-32 flex flex-col items-center justify-center cursor-pointer hover:border-purple-500 transition-colors group block bg-slate-50">
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                  if (e.target.files && e.target.files[0] && playlist) {
-                    uploadPlaylistBanner(playlist.id, e.target.files[0]);
-                  }
-                }} />
-                <ImagePlus className="h-8 w-8 text-slate-400 group-hover:text-purple-600 mb-1" />
-                <p className="text-xs text-slate-500 group-hover:text-purple-600 font-medium">Click to upload banner image</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Recommended resolution: 1280×720</p>
-              </label>
-            </div>
-            <div><Label>Title</Label><Input placeholder="e.g. React Masterclass Series" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" /></div>
-            <div><Label>Description</Label><Textarea placeholder="Describe what this playlist covers..." rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1" /></div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Videos ({videoIds.length})</Label>
-                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setAddVideosOpen(true)}>
-                  <Plus className="h-3.5 w-3.5" />Add Videos
-                </Button>
-              </div>
-              {addedVideos.length === 0 ? (
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50">
-                  <p className="text-xs text-slate-400">No videos added yet</p>
-                  <Button variant="link" size="sm" className="text-xs text-purple-600 mt-1" onClick={() => setAddVideosOpen(true)}>Add videos now</Button>
-                </div>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {addedVideos.map((v) => (
-                    <div key={v.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="h-9 w-14 rounded bg-slate-900 flex items-center justify-center flex-shrink-0">
-                        <Video className="h-3.5 w-3.5 text-purple-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium truncate">{v.title}</div>
-                        <div className="text-xs text-slate-400">{v.duration}</div>
-                      </div>
-                      <button type="button" onClick={() => setVideoIds((p) => p.filter((x) => x !== v.id))} className="text-slate-400 hover:text-red-500">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {loadingData ? (
+            <div className="py-12 flex items-center justify-center gap-3 text-purple-400">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="text-sm font-medium text-slate-300">Fetching playlist details...</span>
             </div>
-          </div>
-          <DialogFooter className="mt-2">
-            <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-            <Button onClick={handleSave} disabled={submitting || !title.trim()} className="bg-slate-900 text-white hover:bg-slate-800">
+          ) : (
+            <div className="space-y-5 py-2">
+              {/* Thumbnail Section */}
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Playlist Thumbnail</Label>
+                <input
+                  type="file"
+                  ref={bannerFileRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleBannerUpload}
+                />
+
+                {thumbnailUrl ? (
+                  <div className="relative border border-slate-800 bg-slate-950 rounded-2xl h-44 overflow-hidden group shadow-lg">
+                    <img src={thumbnailUrl} alt="Playlist thumbnail" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <div
+                      onClick={() => bannerFileRef.current?.click()}
+                      className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 font-semibold text-xs cursor-pointer backdrop-blur-xs"
+                    >
+                      {uploadingBanner ? (
+                        <>
+                          <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
+                          <span>Uploading Thumbnail...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-10 w-10 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg">
+                            <ImagePlus className="h-5 w-5 text-white" />
+                          </div>
+                          <span>Change Playlist Thumbnail</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => bannerFileRef.current?.click()}
+                    disabled={uploadingBanner}
+                    className="w-full border-2 border-dashed border-slate-800 bg-slate-950/60 hover:bg-slate-950 hover:border-purple-500/80 rounded-2xl h-36 flex flex-col items-center justify-center cursor-pointer transition-all group p-4 text-center"
+                  >
+                    {uploadingBanner ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
+                        <span className="text-xs text-slate-300">Uploading Thumbnail...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="h-10 w-10 rounded-full bg-purple-950/80 border border-purple-800/60 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <ImagePlus className="h-5 w-5 text-purple-400" />
+                        </div>
+                        <p className="text-xs text-slate-200 group-hover:text-purple-400 font-semibold">Click to upload playlist thumbnail</p>
+                        <p className="text-[11px] text-slate-500 mt-1">Recommended resolution: 1280×720 (16:9 ratio)</p>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Title Input */}
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Title</Label>
+                <Input
+                  placeholder="e.g. React Masterclass Series"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-purple-500"
+                />
+              </div>
+
+              {/* Description Input */}
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Description</Label>
+                <Textarea
+                  placeholder="Describe what this playlist covers..."
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Videos List Section inside Edit Dialog */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div>
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                      Playlist Videos ({displayedVideos.length})
+                    </Label>
+                    <span className="text-[11px] text-slate-500 font-normal">
+                      Drag handle or use arrows to change order
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs bg-slate-950 border-slate-800 hover:bg-slate-800 text-slate-200 cursor-pointer"
+                    onClick={() => setAddVideosOpen(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5 text-purple-400" /> Add Videos
+                  </Button>
+                </div>
+
+                {displayedVideos.length === 0 ? (
+                  <div className="border border-dashed border-slate-800 rounded-xl p-6 text-center bg-slate-950/60">
+                    <Video className="h-8 w-8 mx-auto mb-2 text-slate-600" />
+                    <p className="text-xs text-slate-400 font-medium">No videos added to this playlist yet</p>
+                    <Button variant="link" size="sm" className="text-xs text-purple-400 mt-1 cursor-pointer" onClick={() => setAddVideosOpen(true)}>
+                      Add videos now
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {displayedVideos.map((v, index) => (
+                      <div
+                        key={v.id}
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedIndex(index);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedIndex !== null && draggedIndex !== index) {
+                            moveVideo(draggedIndex, index);
+                          }
+                          setDraggedIndex(null);
+                        }}
+                        onDragEnd={() => setDraggedIndex(null)}
+                        className={`flex items-center gap-2.5 p-2.5 bg-slate-950/80 rounded-xl border transition-all group ${draggedIndex === index
+                          ? "border-purple-500 bg-purple-950/40 opacity-50"
+                          : "border-slate-800/80 hover:border-slate-700"
+                          }`}
+                      >
+                        {/* Drag Handle & Order */}
+                        <div className="flex items-center gap-1.5 text-slate-500">
+                          <GripVertical className="h-4 w-4 text-slate-500 cursor-grab hover:text-purple-400 transition-colors" />
+                          <span className="w-5 text-center text-xs font-mono font-bold text-slate-500">#{index + 1}</span>
+                        </div>
+
+                        {/* Thumbnail */}
+                        <div className="h-10 w-16 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0 relative">
+                          {v.thumbnailUrl ? (
+                            <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <Video className="h-4 w-4 text-purple-400 opacity-70" />
+                          )}
+                          <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-[9px] text-white px-1 rounded font-mono">{v.duration}</span>
+                        </div>
+
+                        {/* Title & Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-slate-200 truncate group-hover:text-purple-400 transition-colors">{v.title}</div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                            <span>{v.category}</span>
+                            <span>•</span>
+                            <span>{v.views || "0"} views</span>
+                          </div>
+                        </div>
+
+                        {/* Up / Down Controls & Delete */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => moveVideo(index, index - 1)}
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-slate-800 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Move video up"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={index === displayedVideos.length - 1}
+                            onClick={() => moveVideo(index, index + 1)}
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-slate-800 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Move video down"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVideo(v.id)}
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 flex items-center justify-center transition-colors cursor-pointer ml-0.5"
+                            title="Remove video from playlist"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 pt-3 border-t border-slate-800/80">
+            <Button variant="outline" onClick={onClose} disabled={submitting} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 cursor-pointer">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={submitting || !title.trim()} className="bg-purple-600 hover:bg-purple-500 text-white font-medium cursor-pointer">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Create Playlist"}
             </Button>
           </DialogFooter>
@@ -979,20 +1392,94 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
   );
 }
 
+interface VttCue {
+  start: number;
+  end: number;
+  text: string;
+}
+
+function parseTimeToSeconds(timeStr: string): number {
+  if (!timeStr) return 0;
+  const parts = timeStr.trim().split(":");
+  let hours = 0, minutes = 0, seconds = 0;
+  if (parts.length === 3) {
+    hours = parseFloat(parts[0]) || 0;
+    minutes = parseFloat(parts[1]) || 0;
+    seconds = parseFloat(parts[2].replace(",", ".")) || 0;
+  } else if (parts.length === 2) {
+    minutes = parseFloat(parts[0]) || 0;
+    seconds = parseFloat(parts[1].replace(",", ".")) || 0;
+  } else {
+    seconds = parseFloat(parts[0]) || 0;
+  }
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+export interface CaptionTrack {
+  srclang: string;
+  label: string;
+  url: string;
+}
+
 // ── HLS Video Player helper component ─────────────────────────────────────
 function HlsVideoPlayer({
   videoSrc,
   poster,
+  captions = [],
+  selectedTrackUrl = null,
   onLoadedMetadata,
   onError,
 }: {
   videoSrc: string;
   poster?: string;
+  captions?: CaptionTrack[];
+  selectedTrackUrl?: string | null;
   onLoadedMetadata?: (e: React.SyntheticEvent<HTMLVideoElement, Event>) => void;
   onError?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const onErrorRef = useRef(onError);
 
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  const selectedTrack = captions.find((c) => c.url === selectedTrackUrl);
+
+  // Sync textTrack modes dynamically when selectedTrackUrl is changed
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !selectedTrackUrl) return;
+
+    const syncTracks = () => {
+      if (video.textTracks && video.textTracks.length > 0) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          const track = video.textTracks[i];
+          const isMatch = !!(
+            (track as any).src === selectedTrackUrl ||
+            track.language === selectedTrack?.srclang ||
+            track.label === selectedTrack?.label ||
+            (selectedTrack?.srclang && track.language && track.language.toLowerCase().startsWith(selectedTrack.srclang.toLowerCase()))
+          );
+
+          if (isMatch && track.mode !== "showing") {
+            track.mode = "showing";
+          }
+        }
+      }
+    };
+
+    syncTracks();
+    video.addEventListener("loadedmetadata", syncTracks);
+    video.addEventListener("play", syncTracks);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", syncTracks);
+      video.removeEventListener("play", syncTracks);
+    };
+  }, [selectedTrackUrl, selectedTrack]);
+
+  // HLS stream attach - strictly depends ONLY on videoSrc so video never reloads on UI state updates
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoSrc) return;
@@ -1003,22 +1490,23 @@ function HlsVideoPlayer({
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
+        renderTextTracksNatively: true,
       });
       hls.loadSource(videoSrc);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {});
+        video.play().catch(() => { });
       });
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal && onError) {
-          onError();
+        if (data.fatal && onErrorRef.current) {
+          onErrorRef.current();
         }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl") || !videoSrc.includes(".m3u8")) {
       video.src = videoSrc;
-      video.play().catch(() => {});
-    } else if (onError) {
-      onError();
+      video.play().catch(() => { });
+    } else if (onErrorRef.current) {
+      onErrorRef.current();
     }
 
     return () => {
@@ -1026,20 +1514,33 @@ function HlsVideoPlayer({
         hls.destroy();
       }
     };
-  }, [videoSrc, onError]);
+  }, [videoSrc]);
 
   return (
-    <video
-      ref={videoRef}
-      controls
-      autoPlay
-      playsInline
-      crossOrigin="anonymous"
-      poster={poster}
-      onLoadedMetadata={onLoadedMetadata}
-      onError={onError}
-      className="w-full h-full object-contain"
-    />
+    <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden group select-none">
+      <video
+        ref={videoRef}
+        controls
+        autoPlay
+        playsInline
+        crossOrigin="anonymous"
+        poster={poster}
+        onLoadedMetadata={onLoadedMetadata}
+        onError={onError}
+        className="w-full h-full object-contain max-w-full max-h-full"
+        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+      >
+        {captions.map((c) => (
+          <track
+            key={c.url}
+            kind="subtitles"
+            src={c.url}
+            srcLang={c.srclang || "en"}
+            label={c.label || "Subtitles"}
+          />
+        ))}
+      </video>
+    </div>
   );
 }
 
@@ -1047,80 +1548,486 @@ function HlsVideoPlayer({
 function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
   open: boolean; onClose: () => void; content: Content | null; onPlaybackError?: (msg: string) => void;
 }) {
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const [playbackError, setPlaybackError] = useState(false);
   const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
   const [loadingStream, setLoadingStream] = useState(false);
   const [dynamicDuration, setDynamicDuration] = useState<string | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<string>("16/9");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedTrackUrl, setSelectedTrackUrl] = useState<string | null>(null);
+  const [isCcMenuOpen, setIsCcMenuOpen] = useState(false);
 
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const [fetchedDetails, setFetchedDetails] = useState<ApiVideo | null>(null);
+  const fetchedVideoIdRef = useRef<number | null>(null);
+
+  // Comments state inside VideoPlayerDialog
+  const [videoComments, setVideoComments] = useState<ApiComment[]>([]);
+  const [loadingVideoComments, setLoadingVideoComments] = useState(false);
+  const [adminCommentText, setAdminCommentText] = useState("");
+  const [postingAdminComment, setPostingAdminComment] = useState(false);
+
+  // Thread reply states
+  const [replyOpenId, setReplyOpenId] = useState<number | string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
+  const [openRepliesId, setOpenRepliesId] = useState<number | null>(null);
+  const [repliesCache, setRepliesCache] = useState<Record<number, ApiReply[]>>({});
+  const [loadingReplies, setLoadingReplies] = useState(false);
+
+  // Fetch comments for video when modal opens or content changes
   useEffect(() => {
-    setPlaybackError(false);
-    setDynamicDuration(null);
-    setFetchedUrl(null);
-
-    if (content && open) {
-      const existing = getOriginalVideoUrl(content);
-      if (existing) {
-        setFetchedUrl(existing);
-      } else {
-        setLoadingStream(true);
-        getVideoDetails(content.id)
-          .then((res) => {
-            const url = res.playbackUrl || res.videoUrl || (res as any).playback_url || (res as any).video_url;
-            if (url) {
-              setFetchedUrl(url);
-            } else {
-              setPlaybackError(true);
-              if (onPlaybackError) {
-                onPlaybackError(`Something went wrong: Backend has not generated a stream URL for "${content.title}".`);
-              }
-            }
-          })
-          .catch((err) => {
-            console.warn("Failed to fetch video details from backend API", err);
-            setPlaybackError(true);
-            if (onPlaybackError) {
-              onPlaybackError(`Something went wrong loading video asset from server for "${content.title}".`);
-            }
-          })
-          .finally(() => setLoadingStream(false));
-      }
+    if (open && content?.id) {
+      setLoadingVideoComments(true);
+      getAdminComments({ videoId: content.id })
+        .then((res) => setVideoComments(res.data))
+        .catch((err) => console.warn("Failed to fetch comments for video:", err))
+        .finally(() => setLoadingVideoComments(false));
+    } else if (!open) {
+      setVideoComments([]);
+      setAdminCommentText("");
+      setReplyOpenId(null);
+      setReplyText("");
+      setOpenRepliesId(null);
     }
-  }, [content?.id, open]);
+  }, [open, content?.id]);
 
-  if (!content) return null;
-
-  const videoSrc = fetchedUrl || getOriginalVideoUrl(content);
-
-  const handleVideoError = () => {
-    setPlaybackError(true);
-    if (onPlaybackError) {
-      onPlaybackError(`Something went wrong loading video "${content.title}". Media stream unreachable.`);
+  const handlePostAdminComment = async () => {
+    if (!adminCommentText.trim() || !content?.id) return;
+    setPostingAdminComment(true);
+    try {
+      const created = await postAdminVideoComment(content.id, adminCommentText);
+      setVideoComments((prev) => [created, ...prev]);
+      setAdminCommentText("");
+    } catch (err) {
+      console.error("Failed to post admin comment:", err);
+    } finally {
+      setPostingAdminComment(false);
     }
   };
 
-  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    const dur = e.currentTarget.duration;
-    if (dur && !isNaN(dur) && isFinite(dur)) {
-      setDynamicDuration(formatDuration(dur, content.id));
+  const handleToggleLike = async (commentId: number) => {
+    try {
+      const res = await toggleCommentLike(commentId);
+      setVideoComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, isLiked: res.isLiked, likes: res.likes } : c))
+      );
+    } catch (err) {
+      console.error("Failed to toggle comment like:", err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+    try {
+      await apiDeleteComment(commentId);
+      setVideoComments((prev) => prev.filter((c) => c.id !== commentId));
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+    }
+  };
+
+  const handleToggleReplies = async (commentId: number) => {
+    if (openRepliesId === commentId) {
+      setOpenRepliesId(null);
+      return;
+    }
+    setOpenRepliesId(commentId);
+    if (!repliesCache[commentId]) {
+      setLoadingReplies(true);
+      try {
+        const res = await getCommentReplies(commentId);
+        setRepliesCache((prev) => ({ ...prev, [commentId]: res.data }));
+      } catch (err) {
+        console.warn("Failed to load replies:", err);
+      } finally {
+        setLoadingReplies(false);
+      }
+    }
+  };
+
+  const handleToggleReplyLike = async (parentCommentId: number, replyId: number) => {
+    try {
+      const res = await toggleCommentLike(replyId);
+      setRepliesCache((prev) => ({
+        ...prev,
+        [parentCommentId]: (prev[parentCommentId] || []).map((r) =>
+          r.id === replyId ? { ...r, isLiked: res.isLiked, likes: res.likes } : r
+        ),
+      }));
+    } catch (err) {
+      console.error("Failed to toggle reply like:", err);
+    }
+  };
+
+  const handleSendReply = async (parentCommentId: number, targetReplyId?: number) => {
+    if (!replyText.trim()) return;
+    setSubmittingReply(true);
+    try {
+      const targetId = targetReplyId ?? parentCommentId;
+      const newReply = await postCommentReply(targetId, replyText);
+      setRepliesCache((prev) => ({
+        ...prev,
+        [parentCommentId]: [...(prev[parentCommentId] || []), newReply],
+      }));
+      setVideoComments((prev) =>
+        prev.map((c) => (c.id === parentCommentId ? { ...c, replyCount: c.replyCount + 1 } : c))
+      );
+      setOpenRepliesId(parentCommentId);
+      setReplyText("");
+      setReplyOpenId(null);
+    } catch (err) {
+      console.error("Failed to post reply:", err);
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen request failed:", err);
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.warn("Exit fullscreen failed:", err);
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!open || !content) {
+      fetchedVideoIdRef.current = null;
+      setFetchedDetails(null);
+      setFetchedUrl(null);
+      setPlaybackError(false);
+      setDynamicDuration(null);
+      setDownloading(false);
+      setDownloadProgress(null);
+      setSelectedTrackUrl(null);
+      setIsCcMenuOpen(false);
+      setIsDownloadMenuOpen(false);
+      return;
+    }
+
+    if (fetchedVideoIdRef.current === content.id) {
+      return;
+    }
+    fetchedVideoIdRef.current = content.id;
+
+    setPlaybackError(false);
+    setDynamicDuration(null);
+    setFetchedUrl(null);
+    setVideoAspectRatio("16/9");
+    setDownloading(false);
+    setDownloadProgress(null);
+    setSelectedTrackUrl(null);
+    setIsCcMenuOpen(false);
+    setIsDownloadMenuOpen(false);
+
+    const existing = getOriginalVideoUrl(content);
+    if (existing) {
+      setFetchedUrl(existing);
+    } else {
+      setLoadingStream(true);
+    }
+
+    getVideoDetails(content.id)
+      .then((res) => {
+        setFetchedDetails(res);
+        const url = res.playbackUrl || res.videoUrl || (res as any).playback_url || (res as any).video_url;
+        if (url) {
+          setFetchedUrl(url);
+        } else if (!existing) {
+          setPlaybackError(true);
+          if (onPlaybackError) {
+            onPlaybackError(`Something went wrong: Backend has not generated a stream URL for "${content.title}".`);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch video details from backend API", err);
+        if (!existing) {
+          setPlaybackError(true);
+          if (onPlaybackError) {
+            onPlaybackError(`Something went wrong loading video asset from server for "${content.title}".`);
+          }
+        }
+      })
+      .finally(() => setLoadingStream(false));
+  }, [content?.id, open]);
+
+  const activeContent = useMemo(() => {
+    if (!content) return null;
+    if (!fetchedDetails) return content;
+    return {
+      ...content,
+      description: fetchedDetails.description || (fetchedDetails as any).desc || content.description,
+      captionsData: (fetchedDetails.captionsData && fetchedDetails.captionsData.length > 0) ? fetchedDetails.captionsData : content.captionsData,
+      captionUrl: fetchedDetails.captionUrl || content.captionUrl,
+      captionSrclang: fetchedDetails.captionSrclang || content.captionSrclang,
+      captionLabel: fetchedDetails.captionLabel || content.captionLabel,
+      downloadUrls: (fetchedDetails.downloadUrls && fetchedDetails.downloadUrls.length > 0) ? fetchedDetails.downloadUrls : content.downloadUrls,
+      tags: (fetchedDetails.tags && fetchedDetails.tags.length > 0) ? fetchedDetails.tags : content.tags,
+    };
+  }, [content, fetchedDetails]);
+
+  const availableCaptions = useMemo<CaptionTrack[]>(() => {
+    const c = activeContent;
+    if (!c) return [];
+    const list: CaptionTrack[] = [];
+
+    if (c.captionsData && c.captionsData.length > 0) {
+      for (const item of c.captionsData) {
+        if (item.url) {
+          list.push({
+            srclang: item.srclang || "en",
+            label: item.label || (item.srclang ? item.srclang.toUpperCase() : "English"),
+            url: item.url,
+          });
+        }
+      }
+    } else if (c.captionUrl) {
+      list.push({
+        srclang: c.captionSrclang || "en",
+        label: c.captionLabel || "English",
+        url: c.captionUrl,
+      });
+    }
+
+    return list;
+  }, [activeContent]);
+
+  const handleVideoError = useCallback(() => {
+    setPlaybackError(true);
+    if (onPlaybackError && activeContent) {
+      onPlaybackError(`Something went wrong loading video "${activeContent.title}". Media stream unreachable.`);
+    }
+  }, [onPlaybackError, activeContent?.title]);
+
+  const handleLoadedMetadata = useCallback((e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const video = e.currentTarget;
+    const dur = video.duration;
+    if (dur && !isNaN(dur) && isFinite(dur) && activeContent) {
+      setDynamicDuration(formatDuration(dur, activeContent.id));
+    }
+    if (video.videoWidth && video.videoHeight) {
+      setVideoAspectRatio(`${video.videoWidth} / ${video.videoHeight}`);
+    }
+  }, [activeContent?.id]);
+
+  if (!content || !activeContent) return null;
+
+  const videoSrc = fetchedUrl || getOriginalVideoUrl(activeContent);
+
+  const handleDownload = async () => {
+    if (!videoSrc || downloading) return;
+    setDownloading(true);
+    setDownloadProgress(0);
+
+    const cleanTitle = (activeContent.title || "video").replace(/[^a-z0-9]/gi, "_");
+    const filename = `${cleanTitle}.mp4`;
+
+    try {
+      let targetUrl = videoSrc;
+      if (activeContent.downloadUrls && activeContent.downloadUrls.length > 0 && activeContent.downloadUrls[0].url) {
+        targetUrl = activeContent.downloadUrls[0].url;
+      } else if (targetUrl.includes(".m3u8")) {
+        if (targetUrl.includes("playlist.m3u8")) {
+          targetUrl = targetUrl.replace("playlist.m3u8", "play_720p.mp4");
+        }
+      }
+
+      const res = await fetch(targetUrl);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      const contentLength = res.headers.get("content-length");
+      const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+
+      if (res.body && totalBytes > 0) {
+        const reader = res.body.getReader();
+        let loaded = 0;
+        const chunks: BlobPart[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            loaded += value.length;
+            setDownloadProgress(Math.round((loaded / totalBytes) * 100));
+          }
+        }
+
+        const blob = new Blob(chunks, { type: "video/mp4" });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      } else {
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      }
+    } catch (err) {
+      console.warn("Direct blob fetch download failed, triggering link download fallback:", err);
+      const a = document.createElement("a");
+      a.href = videoSrc;
+      a.download = filename;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      setDownloading(false);
+      setDownloadProgress(null);
+    }
+  };
+
+  const handleDownloadTarget = async (targetUrl: string, customFilename?: string) => {
+    if (!targetUrl || downloading) return;
+    setDownloading(true);
+    setDownloadProgress(0);
+
+    const cleanTitle = (activeContent.title || "video").replace(/[^a-z0-9]/gi, "_");
+    const filename = customFilename || `${cleanTitle}.mp4`;
+
+    try {
+      const res = await fetch(targetUrl);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      const contentLength = res.headers.get("content-length");
+      const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+
+      if (res.body && totalBytes > 0) {
+        const reader = res.body.getReader();
+        let loaded = 0;
+        const chunks: BlobPart[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            loaded += value.length;
+            setDownloadProgress(Math.round((loaded / totalBytes) * 100));
+          }
+        }
+
+        const blob = new Blob(chunks, { type: "video/mp4" });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      } else {
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      }
+    } catch (err) {
+      console.warn("Direct blob fetch download failed, triggering link download fallback:", err);
+      const a = document.createElement("a");
+      a.href = targetUrl;
+      a.download = filename;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      setDownloading(false);
+      setDownloadProgress(null);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl text-white">
-        <DialogHeader className="sr-only">
-          <DialogTitle>{content.title}</DialogTitle>
-          <DialogDescription>{content.description || content.title}</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl text-white rounded-2xl [&>button:last-child]:hidden">
+        {/* YouTube Studio Header Bar */}
+        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0 pr-4">
+            <div className="h-7 w-7 rounded-lg bg-purple-950/80 border border-purple-800 flex items-center justify-center flex-shrink-0">
+              <Video className="h-3.5 w-3.5 text-purple-400" />
+            </div>
+            <div className="min-w-0">
+              <DialogTitle className="text-sm font-bold text-white truncate leading-tight">
+                {activeContent.title}
+              </DialogTitle>
+              <DialogDescription className="text-[11px] text-slate-400 truncate">
+                {activeContent.category || "Video Preview"} · {activeContent.date || "Video Details"}
+              </DialogDescription>
+            </div>
+          </div>
 
-        <div className="relative w-full bg-black flex items-center justify-center overflow-hidden" style={{ aspectRatio: "16/9" }}>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleFullscreen}
+              className="h-7 w-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title={isFullscreen ? "Exit Fullscreen (Esc)" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-purple-400" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-7 w-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Close Preview (Esc)"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Player Container - Compact Screen Size */}
+        <div ref={playerContainerRef} className="flex-shrink-0 relative w-full bg-black flex items-center justify-center overflow-hidden min-h-[180px] max-h-[35vh]" style={{ aspectRatio: videoAspectRatio }}>
           {loadingStream ? (
             <div className="flex flex-col items-center justify-center space-y-3 text-slate-400">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-purple-500 text-xs font-medium" />
               <p className="text-xs font-medium">Fetching original stream URL from server...</p>
             </div>
           ) : playbackError || !videoSrc ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-900 border border-red-900/50 rounded-xl max-w-md mx-auto my-12 space-y-3">
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-900 border border-red-900/50 rounded-xl max-w-md mx-auto my-8 space-y-3">
               <div className="h-12 w-12 rounded-full bg-red-950/80 border border-red-800 flex items-center justify-center">
                 <AlertCircle className="h-6 w-6 text-red-500" />
               </div>
@@ -1134,31 +2041,131 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
             </div>
           ) : (
             <HlsVideoPlayer
-              key={content.id}
+              key={activeContent.id}
               videoSrc={videoSrc}
-              poster={content.thumbnailUrl}
+              poster={activeContent.thumbnailUrl}
+              captions={availableCaptions}
+              selectedTrackUrl={selectedTrackUrl}
               onError={handleVideoError}
               onLoadedMetadata={handleLoadedMetadata}
             />
           )}
         </div>
 
-        <div className="p-6 space-y-4 bg-slate-900">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-bold text-xl leading-tight text-white">{content.title}</h2>
-              <p className="text-sm text-slate-400 mt-1">{content.category} · {content.date}</p>
+        {/* Controls & Metadata Footer - Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-900 border-t border-slate-800 custom-scrollbar">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+            {/* Category & Tags on the left */}
+            <div className="flex-1 space-y-2">
+              <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">
+                {activeContent.category || "Uncategorized"}
+              </h4>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Tags:</span>
+                {activeContent.tags && activeContent.tags.length > 0 ? (
+                  activeContent.tags.map((t) => (
+                    <Badge
+                      key={t}
+                      variant="outline"
+                      className="bg-purple-950/70 border-purple-800/60 text-purple-300 text-xs px-2.5 py-0.5 rounded-full"
+                    >
+                      #{t.replace(/^#/, "")}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-500 italic">No tags attached</span>
+                )}
+              </div>
             </div>
-            <Badge variant={content.status === "Published" ? "default" : content.status === "Draft" ? "secondary" : "outline"} className="flex-shrink-0">
-              {content.status}
-            </Badge>
+
+            {/* Download MP4 Action on the right */}
+            <div className="flex-shrink-0 pt-1">
+              {activeContent.downloadUrls && activeContent.downloadUrls.length > 0 ? (
+                <div className="relative">
+                  <Button
+                    onClick={() => setIsDownloadMenuOpen((prev) => !prev)}
+                    disabled={!videoSrc || downloading}
+                    className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs px-3.5 h-9 rounded-xl shadow-lg cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    {downloading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-purple-200" />
+                        <span>{downloadProgress !== null ? `${downloadProgress}%` : "Downloading..."}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4" />
+                        <span>Download MP4</span>
+                        <ChevronDown className="h-3 w-3 opacity-70" />
+                      </>
+                    )}
+                  </Button>
+
+                  {isDownloadMenuOpen && (
+                    <div className="absolute right-0 bottom-full mb-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl backdrop-blur-xl py-1 z-50 text-xs text-slate-200">
+                      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                        <span>Select MP4 Resolution</span>
+                        <Download className="h-3 w-3 text-purple-400" />
+                      </div>
+                      {activeContent.downloadUrls.map((item) => (
+                        <button
+                          key={item.url}
+                          type="button"
+                          onClick={() => {
+                            setIsDownloadMenuOpen(false);
+                            const cleanTitle = (activeContent.title || "video").replace(/[^a-z0-9]/gi, "_");
+                            handleDownloadTarget(item.url, `${cleanTitle}_${item.resolution || "hd"}.mp4`);
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-purple-950/50 hover:text-purple-300 transition-colors cursor-pointer"
+                        >
+                          <span className="font-medium text-slate-200">{item.label || item.resolution}</span>
+                          <span className="text-[10px] font-mono text-purple-400 bg-purple-950 px-1.5 py-0.5 rounded border border-purple-800">
+                            {item.resolution}
+                          </span>
+                        </button>
+                      ))}
+                      <div className="border-t border-slate-800 mt-1 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDownloadMenuOpen(false);
+                            handleDownload();
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        >
+                          Default Stream URL
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  onClick={handleDownload}
+                  disabled={!videoSrc || downloading}
+                  className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs px-3.5 h-9 rounded-xl shadow-lg cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-200" />
+                      <span>{downloadProgress !== null ? `${downloadProgress}%` : "Downloading..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      <span>Download Video</span>
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Total Views", value: content.views || "0" },
-              { label: "Duration", value: dynamicDuration || formatDuration(content.duration, content.id) },
-              { label: "Access Tier", value: content.premium ? "Premium" : "Free" },
+              { label: "Total Views", value: activeContent.views || "0" },
+              { label: "Duration", value: dynamicDuration || formatDuration(activeContent.duration, activeContent.id) },
+              { label: "Access Tier", value: activeContent.premium ? "Premium" : "Free" },
             ].map((s) => (
               <div key={s.label} className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-center">
                 <div className="font-bold text-base text-white">{s.value}</div>
@@ -1167,20 +2174,263 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
             ))}
           </div>
 
-          {content.description && (
-            <div>
-              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
-              <p className="text-sm text-slate-300 leading-relaxed">{content.description}</p>
+          {/* Description Section at the bottom with full width and smooth scrollability */}
+          <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</h4>
+            <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words min-h-[80px] max-h-[220px] overflow-y-auto custom-scrollbar">
+              {activeContent.description || "No description available for this video content."}
             </div>
-          )}
+          </div>
 
-          {content.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {content.tags.map((t) => (
-                <span key={t} className="bg-purple-950/80 border border-purple-800/50 text-purple-300 text-xs px-2.5 py-0.5 rounded-full">#{t}</span>
-              ))}
+          {/* Comments & Discussion Section for Admin */}
+          <div className="pt-3 border-t border-slate-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-purple-400" />
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Comments & Discussion ({videoComments.length})
+                </h4>
+              </div>
+              <span className="text-[11px] text-slate-500">Admin Comment Mode</span>
             </div>
-          )}
+
+            {/* Post Admin Comment Box */}
+            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-2">
+              <Textarea
+                placeholder="Write an official creator comment on this video..."
+                value={adminCommentText}
+                onChange={(e) => setAdminCommentText(e.target.value)}
+                className="bg-slate-900 border-slate-700/70 text-slate-200 text-xs focus:border-purple-500 min-h-[60px] resize-none"
+              />
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] text-slate-500 italic">Posted as Creator Admin</span>
+                <Button
+                  size="sm"
+                  disabled={!adminCommentText.trim() || postingAdminComment}
+                  onClick={handlePostAdminComment}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs h-8 px-3 rounded-lg gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {postingAdminComment ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Posting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      <span>Post Comment</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Video Comments List */}
+            <div className="space-y-2.5 max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
+              {loadingVideoComments ? (
+                <div className="flex items-center justify-center py-6 text-slate-400 gap-2 text-xs">
+                  <Loader2 className="h-4 w-4 animate-spin text-purple-500" /> Loading video comments...
+                </div>
+              ) : videoComments.length === 0 ? (
+                <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800/60">
+                  <MessageSquare className="h-6 w-6 mx-auto mb-1.5 opacity-30 text-purple-400" />
+                  <p>No comments on this video yet.</p>
+                  <p className="text-[11px] text-slate-600">Be the first to post a creator comment above.</p>
+                </div>
+              ) : (
+                videoComments.map((comment) => (
+                  <div key={comment.id} className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-300 font-bold text-xs overflow-hidden">
+                          {comment.userAvatar ? (
+                            <img src={comment.userAvatar} alt={comment.userName} className="w-full h-full object-cover" />
+                          ) : (
+                            comment.userName.charAt(0)
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <span>{comment.userName}</span>
+                            <Badge className="bg-purple-950/80 border-purple-800 text-purple-300 text-[10px] px-1.5 py-0">
+                              Creator
+                            </Badge>
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="h-6 w-6 text-slate-400 hover:text-red-400 cursor-pointer"
+                        title="Delete comment"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    <p className="text-slate-300 leading-relaxed ml-9 whitespace-pre-line">{comment.text}</p>
+
+                    <div className="flex items-center justify-between ml-9 text-[11px] text-slate-400 pt-1">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLike(comment.id)}
+                          className={`flex items-center gap-1 transition-colors cursor-pointer ${comment.isLiked ? "text-purple-400 font-bold" : "hover:text-purple-300"}`}
+                        >
+                          <Heart className={`h-3.5 w-3.5 ${comment.isLiked ? "fill-purple-500 text-purple-500" : ""}`} />
+                          {comment.likes}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleReplies(comment.id)}
+                          className="flex items-center gap-1 hover:text-purple-300 transition-colors cursor-pointer"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          {comment.replyCount}
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyOpenId(replyOpenId === comment.id ? null : comment.id);
+                          setReplyText("");
+                        }}
+                        className="flex items-center gap-1 text-purple-400 hover:text-purple-300 font-medium cursor-pointer"
+                      >
+                        <CornerDownRight className="h-3 w-3" /> Reply
+                      </button>
+                    </div>
+
+                    {/* Inline reply composer */}
+                    {replyOpenId === comment.id && (
+                      <div className="mt-2 ml-9 flex gap-2">
+                        <Input
+                          placeholder={`Reply to ${comment.userName}...`}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          className="bg-slate-900 border-slate-700 text-slate-200 h-8 text-xs"
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          disabled={!replyText.trim() || submittingReply}
+                          onClick={() => handleSendReply(comment.id)}
+                          className="bg-purple-600 hover:bg-purple-500 text-white h-8 px-2.5 cursor-pointer"
+                        >
+                          {submittingReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 cursor-pointer" onClick={() => { setReplyOpenId(null); setReplyText(""); }}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Replies Thread */}
+                    {openRepliesId === comment.id && (
+                      <div className="mt-2 ml-9 pt-2 border-t border-slate-700/50 space-y-1.5">
+                        {loadingReplies ? (
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 py-1">
+                            <Loader2 className="h-3 w-3 animate-spin text-purple-400" /> Loading replies...
+                          </div>
+                        ) : (repliesCache[comment.id] || []).length === 0 ? (
+                          <p className="text-[11px] text-slate-500 py-0.5 italic">No replies in this thread yet.</p>
+                        ) : (
+                          (repliesCache[comment.id] || []).map((reply) => {
+                            const isSubReplyOpen = replyOpenId === `reply-${reply.id}`;
+                            return (
+                              <div key={reply.id} className="bg-slate-900/60 p-2 rounded-lg text-[11px] space-y-1 border border-slate-800/60">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-purple-300 flex items-center gap-1">
+                                      {reply.userName}
+                                      {reply.isCreator && (
+                                        <Badge className="bg-purple-950/80 border-purple-800 text-purple-300 text-[9px] px-1 py-0">
+                                          Creator
+                                        </Badge>
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[9px] text-slate-500">{new Date(reply.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+
+                                <p className="text-slate-300 whitespace-pre-line">{reply.text}</p>
+
+                                {/* Subcomment stats and reply button bar */}
+                                <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleReplyLike(comment.id, reply.id)}
+                                      className={`flex items-center gap-1 font-medium transition-colors cursor-pointer ${reply.isLiked ? "text-purple-400" : "hover:text-purple-400"}`}
+                                    >
+                                      <Heart className={`h-3 w-3 ${reply.isLiked ? "fill-purple-400 text-purple-400" : ""}`} />
+                                      {reply.likes || 0}
+                                    </button>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isSubReplyOpen) {
+                                        setReplyOpenId(null);
+                                        setReplyText("");
+                                      } else {
+                                        setReplyOpenId(`reply-${reply.id}`);
+                                        setReplyText(`@${reply.userName} `);
+                                      }
+                                    }}
+                                    className="text-purple-400 hover:text-purple-300 font-medium flex items-center gap-0.5 cursor-pointer text-[10px]"
+                                  >
+                                    <CornerDownRight className="h-2.5 w-2.5" /> Reply
+                                  </button>
+                                </div>
+
+                                {/* Inline sub-comment reply composer */}
+                                {isSubReplyOpen && (
+                                  <div className="mt-1.5 flex gap-1.5">
+                                    <Input
+                                      placeholder={`Reply to ${reply.userName}...`}
+                                      value={replyText}
+                                      onChange={(e) => setReplyText(e.target.value)}
+                                      className="bg-slate-950 border-slate-700 text-slate-200 h-7 text-[11px]"
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="sm"
+                                      disabled={!replyText.trim() || submittingReply}
+                                      onClick={() => handleSendReply(comment.id, reply.id)}
+                                      className="bg-purple-600 hover:bg-purple-500 text-white h-7 px-2 text-[11px] cursor-pointer"
+                                    >
+                                      {submittingReply ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 text-slate-400 cursor-pointer"
+                                      onClick={() => { setReplyOpenId(null); setReplyText(""); }}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -1233,11 +2483,51 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
           </div>
           <div>
             <Label className="text-xs text-slate-400 uppercase tracking-wide">Description</Label>
-            <p className="mt-1 text-sm text-slate-700 leading-relaxed">{content.description || "No description provided."}</p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{content.description || "No description provided."}</p>
           </div>
+
+          {/* Subtitles & Captions info */}
+          {content.captionsData && content.captionsData.length > 0 && (
+            <div>
+              <Label className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                <Subtitles className="h-3.5 w-3.5 text-purple-400" /> Subtitles ({content.captionsData.length})
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {content.captionsData.map((c, i) => (
+                  <Badge key={i} variant="outline" className="bg-purple-950/40 border-purple-800 text-purple-300 text-xs">
+                    {c.label || c.srclang || "Subtitles"}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Download URLs info */}
+          {content.downloadUrls && content.downloadUrls.length > 0 && (
+            <div>
+              <Label className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                <Download className="h-3.5 w-3.5 text-emerald-400" /> Download Qualities ({content.downloadUrls.length})
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {content.downloadUrls.map((dl, i) => (
+                  <a
+                    key={i}
+                    href={dl.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 bg-emerald-950/40 border border-emerald-800 text-emerald-300 hover:text-white text-xs px-2.5 py-1 rounded-md transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    <span>{dl.label || dl.resolution}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {content.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {content.tags.map((t) => <span key={t} className="bg-purple-100 text-purple-700 text-xs px-2.5 py-0.5 rounded-full">#{t}</span>)}
+              {content.tags.map((t) => <span key={t} className="bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs px-2.5 py-0.5 rounded-full">#{t}</span>)}
             </div>
           )}
         </div>
@@ -1252,7 +2542,7 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
   );
 }
 
-// ── Playlist Detail Screen ─────────────────────────────────────────────────
+// ── Playlist Detail Screen (YouTube Studio Style) ───────────────────────────
 function PlaylistDetailScreen({
   playlist, playlists, allVideos, onBack, onEditMeta, onRefresh,
 }: {
@@ -1270,6 +2560,35 @@ function PlaylistDetailScreen({
   const [editVideoContent, setEditVideoContent] = useState<Content | null>(null);
   const [playingVideo, setPlayingVideo] = useState<Content | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [currentThumbnail, setCurrentThumbnail] = useState<string | undefined>(playlist.thumbnailUrl);
+  const bannerInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setCurrentThumbnail(playlist.thumbnailUrl);
+  }, [playlist.thumbnailUrl]);
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setUploadingBanner(true);
+      try {
+        const res = await uploadPlaylistBanner(playlist.id, file);
+        if (res && (res as any).thumbnailUrl) {
+          setCurrentThumbnail((res as any).thumbnailUrl);
+        } else if (res && (res as any).bannerUrl) {
+          setCurrentThumbnail((res as any).bannerUrl);
+        } else {
+          setCurrentThumbnail(URL.createObjectURL(file));
+        }
+        onRefresh();
+      } catch (err) {
+        console.error("Failed to upload playlist banner/thumbnail:", err);
+      } finally {
+        setUploadingBanner(false);
+      }
+    }
+  };
 
   const fetchVideos = useCallback(async () => {
     setLoadingVideos(true);
@@ -1289,6 +2608,11 @@ function PlaylistDetailScreen({
           description: item.description || "",
           tags: item.tags || [],
           thumbnailUrl: item.thumbnailUrl,
+          captionsData: item.captionsData,
+          captionUrl: item.captionUrl,
+          captionSrclang: item.captionSrclang,
+          captionLabel: item.captionLabel,
+          downloadUrls: item.downloadUrls,
         }));
         setPlaylistVideos(mapped);
       } else {
@@ -1310,6 +2634,7 @@ function PlaylistDetailScreen({
 
   const videos = playlistVideos;
   const currentVideoIds = videos.map((v) => v.id);
+  const totalViews = videos.reduce((acc, v) => acc + (parseInt(v.views, 10) || 0), 0);
 
   const toggleSelect = (id: number) =>
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -1350,7 +2675,7 @@ function PlaylistDetailScreen({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <AddVideosDialog
         open={addVideosOpen}
         onClose={() => setAddVideosOpen(false)}
@@ -1372,147 +2697,320 @@ function PlaylistDetailScreen({
         content={playingVideo}
       />
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 border border-slate-200">
-            <ArrowLeft className="h-5 w-5 text-slate-700" />
-          </Button>
-          <h2 className="text-2xl font-bold text-slate-900">{playlist.title}</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-purple-600"
-            onClick={() => onEditMeta(playlist)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </div>
-        <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800" onClick={() => setAddVideosOpen(true)}>
-          <Plus className="h-4 w-4" />Add Videos
-        </Button>
+      <input
+        type="file"
+        ref={bannerInputRef}
+        onChange={handleBannerUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Back button header */}
+      <div>
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-purple-400 transition-colors mb-2 group cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Back to Playlists
+        </button>
       </div>
 
+      {/* ── YouTube-Style Playlist Hero Card at Top ── */}
+      <div className="relative rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-slate-950/90 border border-slate-800/80 shadow-2xl backdrop-blur-xl p-6 md:p-8 overflow-hidden">
+        {/* Background ambient glow */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-10">
+          {/* Playlist Thumbnail Container */}
+          <div className="relative group w-full md:w-72 h-44 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl flex-shrink-0 flex items-center justify-center">
+            {currentThumbnail ? (
+              <img src={currentThumbnail} alt={playlist.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-2 text-slate-500">
+                <ListVideo className="h-12 w-12 text-purple-400/60" />
+                <span className="text-xs font-medium text-slate-400">No Playlist Thumbnail</span>
+              </div>
+            )}
+
+            {/* Video count badge */}
+            <div className="absolute bottom-2.5 right-2.5 bg-black/85 backdrop-blur-md text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/10 shadow-lg">
+              <ListVideo className="h-3.5 w-3.5 text-purple-400" />
+              <span>{videos.length} {videos.length === 1 ? "Video" : "Videos"}</span>
+            </div>
+
+            {/* Overlay Edit Thumbnail Trigger */}
+            <button
+              onClick={() => bannerInputRef.current?.click()}
+              disabled={uploadingBanner}
+              className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 font-semibold text-xs backdrop-blur-xs cursor-pointer"
+            >
+              {uploadingBanner ? (
+                <>
+                  <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
+                  <span>Uploading Thumbnail...</span>
+                </>
+              ) : (
+                <>
+                  <div className="h-10 w-10 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg">
+                    <ImagePlus className="h-5 w-5 text-white" />
+                  </div>
+                  <span>Change Playlist Thumbnail</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Playlist Info & Metadata */}
+          <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-purple-400 bg-purple-950/80 border border-purple-800/60 px-3 py-0.5 rounded-full">
+                  <ListVideo className="h-3 w-3" /> Playlist Collection
+                </span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight leading-tight">
+                {playlist.title}
+              </h1>
+              <p className="text-sm text-slate-300 leading-relaxed max-w-3xl line-clamp-3">
+                {playlist.description || "No description provided for this playlist."}
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-2 border-t border-slate-800/80">
+              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-400">
+                <span className="text-slate-200 font-semibold">{videos.length} video{videos.length !== 1 ? "s" : ""}</span>
+                <span className="text-slate-600">•</span>
+                <span>Created {playlist.date}</span>
+                <span className="text-slate-600">•</span>
+                <span>{totalViews.toLocaleString()} total views</span>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {videos.length > 0 && (
+                  <Button
+                    className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-950/50 border border-purple-500/30 h-9 px-4 cursor-pointer"
+                    onClick={() => setPlayingVideo(videos[0])}
+                  >
+                    <Play className="h-4 w-4 fill-white" /> Play All
+                  </Button>
+                )}
+
+                <Button
+                  className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700/80 font-medium h-9 px-3.5 text-xs cursor-pointer"
+                  onClick={() => setAddVideosOpen(true)}
+                >
+                  <Plus className="h-4 w-4 text-purple-400" /> Add Videos
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-200 h-9 px-3.5 text-xs cursor-pointer"
+                  onClick={() => bannerInputRef.current?.click()}
+                  disabled={uploadingBanner}
+                >
+                  {uploadingBanner ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                  ) : (
+                    <ImagePlus className="h-4 w-4 text-purple-400" />
+                  )}
+                  Edit Thumbnail
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-200 h-9 px-3.5 text-xs cursor-pointer"
+                  onClick={() => onEditMeta(playlist)}
+                >
+                  <Pencil className="h-4 w-4 text-slate-400" /> Edit Details
+                </Button>
+
+                {selected.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    className="gap-2 font-medium h-9 px-3.5 text-xs ml-auto cursor-pointer"
+                    onClick={removeSelected}
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove Selected ({selected.length})
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Selection Action Bar ── */}
       {selected.length > 0 && (
-        <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 shadow-sm">
-          <CheckSquare className="h-4 w-4 text-purple-600" />
-          <span className="text-sm font-semibold text-purple-900">{selected.length} video{selected.length > 1 ? "s" : ""} selected</span>
-          <Button variant="destructive" size="sm" className="ml-auto gap-1.5" onClick={removeSelected}>
-            <Trash2 className="h-3.5 w-3.5" />Remove from Playlist
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSelected([])}>Cancel</Button>
+        <div className="flex items-center justify-between bg-purple-950/80 border border-purple-800/60 rounded-xl px-5 py-3 shadow-lg backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <CheckSquare className="h-5 w-5 text-purple-400" />
+            <span className="text-sm font-semibold text-purple-200">
+              {selected.length} video{selected.length > 1 ? "s" : ""} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white text-xs cursor-pointer" onClick={() => setSelected([])}>
+              Deselect All
+            </Button>
+            <Button variant="destructive" size="sm" className="gap-1.5 text-xs cursor-pointer" onClick={removeSelected}>
+              <Trash2 className="h-3.5 w-3.5" /> Remove from Playlist
+            </Button>
+          </div>
         </div>
       )}
 
-      <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+      {/* ── YouTube-Style Playlist Video List (Bottom Section) ── */}
+      <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+        {/* List Header */}
+        <div className="bg-slate-950/80 border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded accent-purple-600 cursor-pointer"
+              checked={selected.length === videos.length && videos.length > 0}
+              onChange={toggleAll}
+            />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Playlist Videos ({videos.length})
+            </span>
+          </div>
+          <span className="text-xs text-slate-500 font-medium">Click any item to play</span>
+        </div>
+
         <CardContent className="p-0">
           {loadingVideos ? (
-            <div className="flex items-center justify-center py-16 text-slate-500 gap-3">
-              <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+            <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
               <span className="font-medium text-sm">Loading playlist videos...</span>
             </div>
           ) : videos.length === 0 ? (
-            <div className="text-center py-16 text-slate-400">
-              <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-600" />
-              <p className="font-semibold text-slate-700">No videos in this playlist</p>
-              <Button variant="link" className="text-purple-600 mt-1" onClick={() => setAddVideosOpen(true)}>Add videos now</Button>
+            <div className="text-center py-20 text-slate-500">
+              <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-400" />
+              <p className="font-semibold text-slate-300">No videos in this playlist yet</p>
+              <p className="text-xs text-slate-500 mt-1">Add videos to build your playlist collection</p>
+              <Button className="mt-4 gap-2 bg-purple-600 hover:bg-purple-500 text-white cursor-pointer" onClick={() => setAddVideosOpen(true)}>
+                <Plus className="h-4 w-4" /> Add Videos Now
+              </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader className="bg-slate-50 border-b border-slate-200">
-                <TableRow>
-                  <TableHead className="w-10">
+            <div className="divide-y divide-slate-800/60">
+              {videos.map((v, index) => (
+                <div
+                  key={v.id}
+                  className="p-4 md:p-5 flex items-center gap-4 md:gap-6 hover:bg-slate-800/40 transition-colors group relative cursor-pointer"
+                  onMouseEnter={() => setHoveredId(v.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
+                  {/* Select Checkbox */}
+                  <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded accent-purple-600 cursor-pointer"
-                      checked={selected.length === videos.length && videos.length > 0}
-                      onChange={toggleAll}
+                      checked={selected.includes(v.id)}
+                      onChange={() => toggleSelect(v.id)}
                     />
-                  </TableHead>
-                  <TableHead className="font-bold text-slate-700">Video Asset</TableHead>
-                  <TableHead className="font-bold text-slate-700">Status</TableHead>
-                  <TableHead className="font-bold text-slate-700">Views</TableHead>
-                  <TableHead className="font-bold text-slate-700">Date Added</TableHead>
-                  <TableHead className="w-10 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {videos.map((v) => (
-                  <TableRow
-                    key={v.id}
-                    className="group cursor-pointer hover:bg-slate-50 transition-colors"
-                    onMouseEnter={() => setHoveredId(v.id)}
-                    onMouseLeave={() => setHoveredId(null)}
+                  </div>
+
+                  {/* Item Order Index Number */}
+                  <span className="w-6 text-center text-xs font-mono font-bold text-slate-500 group-hover:text-purple-400 flex-shrink-0">
+                    #{index + 1}
+                  </span>
+
+                  {/* YouTube Thumbnail Format */}
+                  <div
+                    className="relative h-20 w-36 rounded-xl bg-slate-950 flex-shrink-0 overflow-hidden border border-slate-800 shadow-md group-hover:border-purple-500/50 transition-all"
+                    onClick={() => setPlayingVideo(v)}
                   >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded accent-purple-600 cursor-pointer"
-                        checked={selected.includes(v.id)}
-                        onChange={() => toggleSelect(v.id)}
-                      />
-                    </TableCell>
-                    <TableCell onClick={() => setPlayingVideo(v)}>
-                      <div className="flex items-center gap-3">
-                        <div className="relative h-14 w-24 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 overflow-hidden group/thumb shadow-sm">
-                          {v.thumbnailUrl ? (
-                            <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <Video className="h-5 w-5 text-purple-400 opacity-60" />
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-colors flex items-center justify-center">
-                            <Play className="h-6 w-6 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity fill-white" />
-                          </div>
-                          <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-mono">{v.duration}</span>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm text-slate-900 group-hover:text-purple-700 transition-colors">{v.title}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">{v.category}</div>
-                          {v.premium && <Badge variant="secondary" className="mt-1 text-[10px]">Premium</Badge>}
-                        </div>
+                    {v.thumbnailUrl ? (
+                      <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Video className="h-6 w-6 text-purple-400 opacity-60" />
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={v.status === "Published" ? "default" : v.status === "Draft" ? "secondary" : "outline"}>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <div className="h-9 w-9 rounded-full bg-purple-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 shadow-lg">
+                        <Play className="h-4 w-4 fill-white ml-0.5" />
+                      </div>
+                    </div>
+                    <span className="absolute bottom-1 right-1 bg-black/85 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">
+                      {v.duration}
+                    </span>
+                  </div>
+
+                  {/* Video Title & Metadata Information */}
+                  <div className="flex-1 min-w-0 space-y-1" onClick={() => setPlayingVideo(v)}>
+                    <div className="font-bold text-slate-100 text-base group-hover:text-purple-400 transition-colors truncate">
+                      {v.title}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-medium">
+                      <span>{v.category}</span>
+                      <span className="text-slate-600">•</span>
+                      <span>Added {v.date}</span>
+                      <span className="text-slate-600">•</span>
+                      <span>{v.views || "0"} views</span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] font-mono ${v.status === "Published" || v.status === "published"
+                          ? "bg-emerald-950/80 border-emerald-800/60 text-emerald-400"
+                          : v.status === "Draft" || v.status === "draft"
+                            ? "bg-slate-800 border-slate-700 text-slate-300"
+                            : "bg-amber-950/80 border-amber-800/60 text-amber-400"
+                          }`}
+                      >
                         {v.status}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-slate-600 text-sm font-medium">{v.views || "0"}</TableCell>
-                    <TableCell className="text-slate-600 text-sm">{v.date}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()} className="text-right">
-                      <div className={`transition-opacity ${hoveredId === v.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4 text-slate-600" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setPlayingVideo(v)}>
-                              <Play className="mr-2 h-4 w-4 fill-slate-700" />Play Video
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setEditVideoContent(v)}>
-                              <Pencil className="mr-2 h-4 w-4" />Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" onClick={() => removeSingle(v.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" />Remove from Playlist
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      {v.premium && (
+                        <Badge variant="outline" className="text-[10px] bg-purple-950/80 border-purple-800/60 text-purple-300">
+                          Premium
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons (Play, Edit Details, Remove) */}
+                  <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-400 hover:text-purple-400 hover:bg-slate-800 cursor-pointer"
+                      onClick={() => setPlayingVideo(v)}
+                      title="Play Video"
+                    >
+                      <Play className="h-4 w-4 fill-current" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                      onClick={() => setEditVideoContent(v)}
+                      title="Edit Video Details"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 cursor-pointer"
+                      onClick={() => removeSingle(v.id)}
+                      title="Remove from Playlist"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
-
-      <p className="text-xs text-slate-400 font-medium">{videos.length} video{videos.length !== 1 ? "s" : ""} in playlist</p>
     </div>
   );
 }
+
 
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function ContentManagement() {
@@ -1576,6 +3074,11 @@ export default function ContentManagement() {
           tags: item.tags || [],
           thumbnailUrl: item.thumbnailUrl,
           encodeProgress: item.encodeProgress,
+          captionsData: item.captionsData,
+          captionUrl: item.captionUrl,
+          captionSrclang: item.captionSrclang,
+          captionLabel: item.captionLabel,
+          downloadUrls: item.downloadUrls,
         }));
         setContents(mapped);
       }
@@ -1625,6 +3128,16 @@ export default function ContentManagement() {
       return () => clearInterval(timer);
     }
   }, [contents, loadData]);
+
+  // Synchronize activePlaylist details when playlists list refreshes
+  useEffect(() => {
+    if (activePlaylist && playlists.length > 0) {
+      const updated = playlists.find((p) => p.id === activePlaylist.id);
+      if (updated) {
+        setActivePlaylist((prev) => (prev ? { ...prev, ...updated } : updated));
+      }
+    }
+  }, [playlists]);
 
   const handleDeleteVideo = async (id: number) => {
     try {
@@ -1714,16 +3227,18 @@ export default function ContentManagement() {
           <p className="text-slate-500 mt-1 text-sm font-medium">Upload, organize, and manage your OTT video library</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={() => loadData()} title="Refresh Data" className="h-10 w-10 border-slate-200 bg-white">
-            <RefreshCw className={`h-4 w-4 text-slate-700 ${loading ? "animate-spin" : ""}`} />
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" onClick={() => loadData()} title="Refresh Data" className="h-10 w-10 border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-300">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-purple-400" : ""}`} />
           </Button>
           {activeTab === "videos" && (
-            <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800 h-10 px-4 font-semibold shadow-md" onClick={() => setUploadOpen(true)}>
+            <Button className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white h-10 px-4 font-semibold shadow-lg shadow-purple-950/50 border border-purple-500/30" onClick={() => setUploadOpen(true)}>
               <Plus className="h-4 w-4" />Upload Content
             </Button>
           )}
           {activeTab === "playlists" && (
-            <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800 h-10 px-4 font-semibold shadow-md" onClick={() => setNewPlaylistOpen(true)}>
+            <Button className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white h-10 px-4 font-semibold shadow-lg shadow-purple-950/50 border border-purple-500/30" onClick={() => setNewPlaylistOpen(true)}>
               <Plus className="h-4 w-4" />New Playlist
             </Button>
           )}
@@ -1731,54 +3246,54 @@ export default function ContentManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        {/* Prominent high-contrast active tab switcher */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-          <TabsList className="bg-slate-200/80 p-1 rounded-xl">
+        {/* Dark Studio tab switcher */}
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+          <TabsList className="bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
             <TabsTrigger
               value="videos"
-              className="gap-2 px-5 py-2 rounded-lg font-semibold transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-700 hover:text-slate-900"
+              className="gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all data-[state=active]:bg-purple-600/90 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-950/50 text-slate-400 hover:text-slate-200"
             >
               <Video className="h-4 w-4" />Videos
-              <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === "videos" ? "bg-white/20 text-white" : "bg-slate-300 text-slate-700"}`}>
+              <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === "videos" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"}`}>
                 {contents.length}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="playlists"
-              className="gap-2 px-5 py-2 rounded-lg font-semibold transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-700 hover:text-slate-900"
+              className="gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all data-[state=active]:bg-purple-600/90 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-950/50 text-slate-400 hover:text-slate-200"
             >
               <ListVideo className="h-4 w-4" />Playlists
-              <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === "playlists" ? "bg-white/20 text-white" : "bg-slate-300 text-slate-700"}`}>
+              <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === "playlists" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"}`}>
                 {playlists.length}
               </span>
             </TabsTrigger>
           </TabsList>
 
           {activeTab === "videos" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input type="search" placeholder="Search videos..." className="pl-9 w-64 bg-white border-slate-200"
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input type="search" placeholder="Search videos..." className="pl-9 w-64 bg-slate-950/90 border-slate-800 text-slate-100 placeholder:text-slate-500"
                   value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
-              <Button variant={showFilters ? "default" : "outline"} className="gap-2 border-slate-200 bg-white"
+              <Button variant={showFilters ? "default" : "outline"} className={`gap-2 border-slate-800 ${showFilters ? "bg-purple-600 text-white hover:bg-purple-500" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
                 onClick={() => setShowFilters(!showFilters)}>
                 <SlidersHorizontal className="h-4 w-4" />Filters
-                {activeCount > 0 && <span className="ml-1 bg-slate-900 text-white rounded-full text-xs font-bold px-1.5">{activeCount}</span>}
+                {activeCount > 0 && <span className="ml-1 bg-white/20 text-white rounded-full text-xs font-bold px-1.5">{activeCount}</span>}
               </Button>
             </div>
           )}
 
           {activeTab === "playlists" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input type="search" placeholder="Search playlists..." className="pl-9 w-64 bg-white border-slate-200"
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input type="search" placeholder="Search playlists..." className="pl-9 w-64 bg-slate-950/90 border-slate-800 text-slate-100 placeholder:text-slate-500"
                   value={playlistSearch} onChange={(e) => setPlaylistSearch(e.target.value)} />
               </div>
               <Select value={playlistSortBy} onValueChange={setPlaylistSortBy}>
-                <SelectTrigger className="h-10 text-sm w-40 bg-white border-slate-200"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="h-10 text-sm w-40 bg-slate-950/90 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                   <SelectItem value="newest">Newest first</SelectItem>
                   <SelectItem value="oldest">Oldest first</SelectItem>
                   <SelectItem value="title">Title A–Z</SelectItem>
@@ -1790,15 +3305,15 @@ export default function ContentManagement() {
 
         {/* ── Videos Tab ── */}
         <TabsContent value="videos">
-          <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+          <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
             {showFilters && (
-              <CardHeader className="bg-slate-50 border-b border-slate-200 p-4">
+              <CardHeader className="bg-slate-950/80 border-b border-slate-800/80 p-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                   <div>
-                    <Label className="text-xs mb-1 block font-semibold text-slate-500">Status</Label>
+                    <Label className="text-xs mb-1.5 block font-semibold text-slate-400 uppercase tracking-wider">Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="h-9 text-sm bg-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-9 text-sm bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="Published">Published</SelectItem>
                         <SelectItem value="Draft">Draft</SelectItem>
@@ -1807,27 +3322,27 @@ export default function ContentManagement() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1 block font-semibold text-slate-500">Category</Label>
+                    <Label className="text-xs mb-1.5 block font-semibold text-slate-400 uppercase tracking-wider">Category</Label>
                     <Select value={filterCategory} onValueChange={setFilterCategory}>
-                      <SelectTrigger className="h-9 text-sm bg-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-9 text-sm bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                         <SelectItem value="all">All Categories</SelectItem>
                         {uniqueCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1 block font-semibold text-slate-500">Date</Label>
+                    <Label className="text-xs mb-1.5 block font-semibold text-slate-400 uppercase tracking-wider">Date</Label>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 gap-1.5 text-sm w-full justify-start bg-white"
+                      className="h-9 gap-1.5 text-sm w-full justify-start bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800"
                       onClick={() => setDateRangeOpen(true)}
                     >
-                      <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
+                      <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
                       <span className="truncate flex-1 text-left">{dateLabel ?? "Pick date or range"}</span>
                       {dateLabel && (
-                        <X className="h-3 w-3 flex-shrink-0 text-slate-400 hover:text-red-500"
+                        <X className="h-3 w-3 flex-shrink-0 text-slate-400 hover:text-rose-400"
                           onClick={(e) => { e.stopPropagation(); setFilterDateFrom(""); setFilterDateTo(""); }} />
                       )}
                     </Button>
@@ -1835,10 +3350,10 @@ export default function ContentManagement() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-slate-500 font-semibold">Sort by:</Label>
+                    <Label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Sort by:</Label>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="h-8 text-sm w-36 bg-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-8 text-sm w-36 bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                         <SelectItem value="newest">Newest first</SelectItem>
                         <SelectItem value="oldest">Oldest first</SelectItem>
                         <SelectItem value="views">Most views</SelectItem>
@@ -1847,7 +3362,7 @@ export default function ContentManagement() {
                     </Select>
                   </div>
                   {activeCount > 0 && (
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-slate-500 h-8" onClick={resetFilters}>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-purple-400 hover:text-purple-300 h-8" onClick={resetFilters}>
                       <X className="h-3 w-3" />Clear filters
                     </Button>
                   )}
@@ -1857,36 +3372,36 @@ export default function ContentManagement() {
 
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex items-center justify-center py-20 text-slate-500 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
                   <span className="font-medium text-sm">Loading video assets from server...</span>
                 </div>
               ) : contents.length === 0 ? (
-                <div className="text-center py-20 text-slate-400">
-                  <Video className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-600" />
-                  <p className="font-semibold text-slate-700">No video content found</p>
-                  <p className="text-xs text-slate-400 mt-1">Try adjusting your search or active filters</p>
-                  <Button variant="link" className="text-purple-600 mt-2 font-medium" onClick={resetFilters}>Reset filters</Button>
+                <div className="text-center py-20 text-slate-500">
+                  <Video className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-400" />
+                  <p className="font-semibold text-slate-300">No video content found</p>
+                  <p className="text-xs text-slate-500 mt-1">Try adjusting your search or active filters</p>
+                  <Button variant="link" className="text-purple-400 mt-2 font-medium" onClick={resetFilters}>Reset filters</Button>
                 </div>
               ) : (
                 <Table>
-                  <TableHeader className="bg-slate-50 border-b border-slate-200">
-                    <TableRow>
-                      <TableHead className="font-bold text-slate-700">Video Asset</TableHead>
-                      <TableHead className="font-bold text-slate-700">Category</TableHead>
-                      <TableHead className="font-bold text-slate-700">Status</TableHead>
-                      <TableHead className="font-bold text-slate-700">Views</TableHead>
-                      <TableHead className="font-bold text-slate-700">Duration</TableHead>
-                      <TableHead className="font-bold text-slate-700">Date Added</TableHead>
-                      <TableHead className="text-right font-bold text-slate-700">Actions</TableHead>
+                  <TableHeader className="bg-slate-950/80 border-b border-slate-800/80">
+                    <TableRow className="border-b border-slate-800/80 hover:bg-transparent">
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Video Asset</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Category</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Status</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Views</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Duration</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Date Added</TableHead>
+                      <TableHead className="text-right font-bold text-slate-400 uppercase tracking-wider text-xs">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {contents.map((content) => (
-                      <TableRow key={content.id} className="hover:bg-slate-50 transition-colors group cursor-pointer">
+                      <TableRow key={content.id} className="hover:bg-slate-800/40 border-b border-slate-800/60 transition-colors group cursor-pointer">
                         <TableCell onClick={() => setPlayingVideo(content)}>
                           <div className="flex items-center gap-3">
-                            <div className="h-16 w-24 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 relative overflow-hidden group/thumb shadow-sm">
+                            <div className="h-16 w-24 rounded-xl bg-slate-950 flex items-center justify-center flex-shrink-0 relative overflow-hidden group/thumb shadow-md border border-slate-800">
                               {content.thumbnailUrl ? (
                                 <img src={content.thumbnailUrl} alt={content.title} className="w-full h-full object-cover" />
                               ) : (
@@ -1898,18 +3413,18 @@ export default function ContentManagement() {
                               <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-mono">{content.duration}</span>
                             </div>
                             <div>
-                              <div className="font-semibold text-slate-900 text-sm group-hover:text-purple-700 transition-colors">{content.title}</div>
+                              <div className="font-semibold text-slate-100 text-sm group-hover:text-purple-400 transition-colors">{content.title}</div>
                               {((content.encodeProgress !== undefined && content.encodeProgress < 100) ||
                                 ["Pending", "pending", "Processing", "processing", "Encoding", "encoding", "Uploading", "uploading"].includes(content.status)) ? (
                                 <div className="mt-1 space-y-1">
-                                  <div className="w-36 bg-slate-100 border border-slate-200 rounded-full h-2 overflow-hidden relative">
+                                  <div className="w-36 bg-slate-950 border border-slate-800 rounded-full h-2 overflow-hidden relative">
                                     <div
-                                      className="bg-purple-600 h-full transition-all duration-500 rounded-full"
+                                      className="bg-gradient-to-r from-purple-600 to-indigo-500 h-full transition-all duration-500 rounded-full"
                                       style={{ width: `${Math.max(content.encodeProgress ?? 35, 10)}%` }}
                                     />
                                   </div>
-                                  <div className="text-[10px] font-semibold text-purple-600 flex items-center gap-1">
-                                    <Loader2 className="h-3 w-3 animate-spin text-purple-600" />
+                                  <div className="text-[10px] font-semibold text-purple-400 flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin text-purple-400" />
                                     <span>
                                       {content.encodeProgress !== undefined && content.encodeProgress > 0
                                         ? `${content.encodeProgress}% uploaded / encoding`
@@ -1918,44 +3433,49 @@ export default function ContentManagement() {
                                   </div>
                                 </div>
                               ) : content.premium ? (
-                                <Badge variant="secondary" className="mt-1 text-[10px]">Premium</Badge>
+                                <Badge variant="outline" className="mt-1 text-[10px] bg-purple-950/80 border-purple-800/60 text-purple-300">Premium</Badge>
                               ) : null}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-600 text-sm">{content.category}</TableCell>
+                        <TableCell className="text-slate-400 text-sm">{content.category}</TableCell>
                         <TableCell>
-                          <Badge variant={content.status === "Published" || content.status === "published" ? "default" : content.status === "Draft" || content.status === "draft" ? "secondary" : "outline"}>
+                          <Badge variant="outline" className={`text-xs font-mono ${content.status === "Published" || content.status === "published"
+                            ? "bg-emerald-950/80 border-emerald-800/60 text-emerald-400"
+                            : content.status === "Draft" || content.status === "draft"
+                              ? "bg-slate-800 border-slate-700 text-slate-300"
+                              : "bg-amber-950/80 border-amber-800/60 text-amber-400"
+                            }`}>
                             {content.status} {content.encodeProgress !== undefined ? `(${content.encodeProgress}%)` : ""}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-slate-600 font-medium text-sm">{content.views}</TableCell>
-                        <TableCell className="text-slate-600 font-mono text-xs">{content.duration}</TableCell>
-                        <TableCell className="text-slate-600 text-sm">{content.date}</TableCell>
+                        <TableCell className="text-slate-300 font-medium text-sm">{content.views}</TableCell>
+                        <TableCell className="text-slate-400 font-mono text-xs">{content.duration}</TableCell>
+                        <TableCell className="text-slate-400 text-sm">{content.date}</TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4 text-slate-600" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white border border-slate-200 shadow-lg">
+                            <DropdownMenuContent align="end" className="bg-slate-900/95 border border-slate-800 shadow-2xl backdrop-blur-xl">
                               <DropdownMenuItem onClick={() => setPlayingVideo(content)}>
-                                <Play className="mr-2 h-4 w-4 fill-slate-700 text-slate-700" />Play Video
+                                <Play className="mr-2 h-4 w-4 fill-purple-400 text-purple-400" />Play Video
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setViewContent(content)}>
-                                <Eye className="mr-2 h-4 w-4" />View Details
+                                <Eye className="mr-2 h-4 w-4 text-slate-300" />View Details
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setEditContent(content)}>
-                                <Edit className="mr-2 h-4 w-4" />Edit Content
+                                <Edit className="mr-2 h-4 w-4 text-slate-300" />Edit Content
                               </DropdownMenuItem>
                               {content.status !== "Published" && content.status !== "published" && (
                                 <DropdownMenuItem onClick={() => {
                                   publishVideo(content.id).then(() => loadData(true));
                                 }}>
-                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />Publish
+                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-400" />Publish
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteVideo(content.id)}>
+                              <DropdownMenuItem className="text-rose-400 focus:bg-rose-950/40" onClick={() => handleDeleteVideo(content.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />Delete Asset
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1972,36 +3492,36 @@ export default function ContentManagement() {
 
         {/* ── Playlists Tab ── */}
         <TabsContent value="playlists">
-          <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+          <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex items-center justify-center py-20 text-slate-500 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
                   <span className="font-medium text-sm">Loading playlists...</span>
                 </div>
               ) : playlists.length === 0 ? (
-                <div className="text-center py-20 text-slate-400">
-                  <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-600" />
-                  <p className="font-semibold text-slate-700">No playlists found</p>
-                  <Button variant="link" className="text-purple-600 mt-2 font-medium" onClick={() => setNewPlaylistOpen(true)}>Create a new playlist</Button>
+                <div className="text-center py-20 text-slate-500">
+                  <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-400" />
+                  <p className="font-semibold text-slate-300">No playlists found</p>
+                  <Button variant="link" className="text-purple-400 mt-2 font-medium" onClick={() => setNewPlaylistOpen(true)}>Create a new playlist</Button>
                 </div>
               ) : (
                 <Table>
-                  <TableHeader className="bg-slate-50 border-b border-slate-200">
-                    <TableRow>
-                      <TableHead className="font-bold text-slate-700">Playlist Collection</TableHead>
-                      <TableHead className="font-bold text-slate-700">Videos Count</TableHead>
-                      <TableHead className="font-bold text-slate-700">Date Created</TableHead>
-                      <TableHead className="text-right font-bold text-slate-700">Actions</TableHead>
+                  <TableHeader className="bg-slate-950/80 border-b border-slate-800/80">
+                    <TableRow className="border-b border-slate-800/80 hover:bg-transparent">
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Playlist Collection</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Videos Count</TableHead>
+                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Date Created</TableHead>
+                      <TableHead className="text-right font-bold text-slate-400 uppercase tracking-wider text-xs">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {playlists.map((pl) => (
-                      <TableRow key={pl.id} className="hover:bg-slate-50 transition-colors">
+                      <TableRow key={pl.id} className="hover:bg-slate-800/40 border-b border-slate-800/60 transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div
-                              className="relative h-14 w-24 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer group shadow-sm"
+                              className="relative h-14 w-24 rounded-xl bg-slate-950 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer group shadow-md border border-slate-800"
                               onClick={() => setActivePlaylist(pl)}
                             >
                               {pl.thumbnailUrl ? (
@@ -2013,31 +3533,31 @@ export default function ContentManagement() {
                             </div>
                             <div>
                               <button
-                                className="font-semibold text-slate-900 text-left hover:text-purple-700 transition-colors text-sm"
+                                className="font-semibold text-slate-100 text-left hover:text-purple-400 transition-colors text-sm"
                                 onClick={() => setActivePlaylist(pl)}
                               >
                                 {pl.title}
                               </button>
-                              <div className="text-xs text-slate-500 mt-0.5 max-w-xs truncate">{pl.description || "No description provided."}</div>
+                              <div className="text-xs text-slate-400 mt-0.5 max-w-xs truncate">{pl.description || "No description provided."}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-600 font-medium text-sm">{pl.videos} videos</TableCell>
-                        <TableCell className="text-slate-600 text-sm">{pl.date}</TableCell>
+                        <TableCell className="text-slate-300 font-medium text-sm">{pl.videos} videos</TableCell>
+                        <TableCell className="text-slate-400 text-sm">{pl.date}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4 text-slate-600" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white border border-slate-200 shadow-lg">
+                            <DropdownMenuContent align="end" className="bg-slate-900/95 border border-slate-800 shadow-2xl backdrop-blur-xl">
                               <DropdownMenuItem onClick={() => setActivePlaylist(pl)}>
-                                <ListVideo className="mr-2 h-4 w-4" />Open Playlist
+                                <ListVideo className="mr-2 h-4 w-4 text-purple-400" />Open Playlist
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setEditPlaylistMeta(pl)}>
-                                <Edit className="mr-2 h-4 w-4" />Edit Details
+                                <Edit className="mr-2 h-4 w-4 text-slate-300" />Edit Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600" onClick={() => handleDeletePlaylist(pl.id)}>
+                              <DropdownMenuItem className="text-rose-400 focus:bg-rose-950/40" onClick={() => handleDeletePlaylist(pl.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />Delete Playlist
                               </DropdownMenuItem>
                             </DropdownMenuContent>

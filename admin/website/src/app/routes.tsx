@@ -10,8 +10,13 @@ import Branding from "./pages/Branding";
 import Categories from "./pages/Categories";
 import Settings from "./pages/Settings";
 import AdminLayout from "./components/AdminLayout";
+import Login from "./pages/Login";
 
 export const router = createBrowserRouter([
+  {
+    path: "/login",
+    Component: Login,
+  },
   {
     path: "/",
     Component: AdminLayout,

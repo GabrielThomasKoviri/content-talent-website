@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "./ui/dialog";
 import { useState } from "react";
+import ApiResponseMonitor from "./ApiResponseMonitor";
 
 const navigation = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -129,7 +130,7 @@ export default function AdminLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const NavLinks = ({ onLinkClick }: { onLinkClick?: () => void }) => (
-    <nav className="space-y-1 p-4">
+    <nav className="space-y-1.5 p-4">
       {navigation.map((item) => {
         const isActive =
           location.pathname === item.path ||
@@ -139,11 +140,13 @@ export default function AdminLayout() {
             key={item.path}
             to={item.path}
             onClick={onLinkClick}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              isActive ? "bg-purple-50 text-purple-700" : "text-gray-700 hover:bg-gray-100"
+            className={`flex items-center gap-3.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+              isActive
+                ? "bg-gradient-to-r from-purple-600/30 to-blue-600/20 text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)] font-semibold"
+                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
             }`}
           >
-            <item.icon className="h-5 w-5" />
+            <item.icon className={`h-5 w-5 ${isActive ? "text-purple-400" : "text-slate-400"}`} />
             {item.name}
           </Link>
         );
@@ -152,15 +155,22 @@ export default function AdminLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 selection:bg-purple-500/30">
       <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} />
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white hidden lg:block">
-        <div className="flex h-16 items-center border-b border-gray-200 px-6">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600" />
-            <span className="font-semibold text-lg">Creator Admin</span>
+      <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-800/80 bg-slate-950/90 backdrop-blur-xl hidden lg:block shadow-2xl">
+        <div className="flex h-16 items-center border-b border-slate-800/80 px-6">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+              <span className="font-bold text-white text-lg">T</span>
+            </div>
+            <div>
+              <span className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-purple-300">
+                TalentSea
+              </span>
+              <span className="text-[10px] block font-mono text-purple-400 -mt-1 tracking-wider uppercase">Studio Admin</span>
+            </div>
           </div>
         </div>
         <NavLinks />
@@ -168,14 +178,16 @@ export default function AdminLayout() {
 
       {/* Mobile sidebar */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 lg:hidden"
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}>
-          <aside className="fixed left-0 top-0 h-screen w-64 border-r border-gray-200 bg-white"
+          <aside className="fixed left-0 top-0 h-screen w-64 border-r border-slate-800 bg-slate-950"
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex h-16 items-center border-b border-gray-200 px-6">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600" />
-                <span className="font-semibold text-lg">Creator Admin</span>
+            <div className="flex h-16 items-center border-b border-slate-800 px-6">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center">
+                  <span className="font-bold text-white text-lg">T</span>
+                </div>
+                <span className="font-bold text-lg text-white">TalentSea Studio</span>
               </div>
             </div>
             <NavLinks onLinkClick={() => setSidebarOpen(false)} />
@@ -185,50 +197,50 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-6">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-6 shadow-lg">
+          <Button variant="ghost" size="icon" className="lg:hidden text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
 
           <div className="flex flex-1 items-center gap-4">
             <div className="relative max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input type="search" placeholder="Search..." className="pl-9 bg-white text-slate-900 border border-slate-200" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Input type="search" placeholder="Search videos, subscribers, analytics..." className="pl-9 bg-slate-900/90 text-slate-100 placeholder:text-slate-500 border border-slate-800 focus:border-purple-500/50 rounded-xl" />
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 rounded-xl">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="gap-2.5 text-slate-200 hover:bg-slate-800/60 border border-slate-800/80 rounded-xl px-3 py-1.5">
+                  <Avatar className="h-8 w-8 ring-2 ring-purple-500/40">
                     <AvatarImage src="" />
-                    <AvatarFallback className="bg-gradient-to-br from-purple-400 to-blue-500 text-white text-sm font-bold">CR</AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-cyan-500 text-white text-xs font-bold">TS</AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline">Creator Name</span>
+                  <span className="hidden md:inline text-sm font-medium">Creator Studio</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200 shadow-2xl">
                 <DropdownMenuLabel>
                   <div>
-                    <p className="font-semibold">Creator Name</p>
-                    <p className="text-xs text-gray-500 font-normal">creator@example.com</p>
+                    <p className="font-semibold text-white">Creator Studio</p>
+                    <p className="text-xs text-slate-400 font-normal">admin@talentsea.io</p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setProfileOpen(true)}>
-                  <User className="mr-2 h-4 w-4" />Profile
+                <DropdownMenuSeparator className="bg-slate-800" />
+                <DropdownMenuItem onClick={() => setProfileOpen(true)} className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
+                  <User className="mr-2 h-4 w-4 text-purple-400" />Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
-                  <Settings className="mr-2 h-4 w-4" />Settings
+                <DropdownMenuItem onClick={() => navigate("/settings")} className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4 text-purple-400" />Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
+                <DropdownMenuSeparator className="bg-slate-800" />
+                <DropdownMenuItem className="text-red-400 hover:bg-slate-800 focus:bg-slate-800 cursor-pointer" onClick={() => navigate("/login")}>
                   <LogOut className="mr-2 h-4 w-4" />Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -239,6 +251,7 @@ export default function AdminLayout() {
         <main className="p-6">
           <Outlet />
         </main>
+        <ApiResponseMonitor />
       </div>
     </div>
   );
