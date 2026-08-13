@@ -1,0 +1,10 @@
+{
+  "name": "content-talent-website",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix admin/website run dev",
+    "build": "npm --prefix admin/website run build",
+    "preview": "npm --prefix admin/website run preview"
+  }
+}
