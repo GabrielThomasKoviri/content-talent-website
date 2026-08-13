@@ -1,9 +1,22 @@
 // API Service module for communicating with Content Management backend REST endpoints
 
-const BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
-  "";
+function getBaseUrl(): string {
+  const envUrl =
+    (import.meta as any).env?.VITE_API_BASE_URL ||
+    (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
+    "";
+
+  // If page is loaded over HTTPS (e.g. Vercel deployment) and API URL is HTTP,
+  // fallback to relative path ("") to route through Vercel /api reverse proxy and prevent Mixed Content blocking.
+  if (typeof window !== "undefined" && window.location.protocol === "https:" && envUrl.startsWith("http://")) {
+    console.warn("[API Service] HTTPS page detected with HTTP API URL. Routing via relative proxy (/api) to prevent Mixed Content errors.");
+    return "";
+  }
+
+  return envUrl;
+}
+
+const BASE_URL = getBaseUrl();
 
 // ── Types & Interfaces ──────────────────────────────────────────────────────
 
