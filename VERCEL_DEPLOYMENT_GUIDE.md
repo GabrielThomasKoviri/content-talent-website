@@ -25,8 +25,8 @@ Follow the steps below to host this application on Vercel.
    - **Output Directory**: `dist` (or leave default)
 
 5. **Environment Variables**:
-   Under **Environment Variables**, expand the section and add the following keys if your app connects to a backend API:
-   - `VITE_API_BASE_URL`: `https://your-backend-api.com` (Your production backend API URL)
+   Under **Environment Variables**, configure the following:
+   - `VITE_API_BASE_URL`: Leave empty or set to `""` (Recommended: When left empty, API requests use Vercel's `/api` proxy rewrite to backend `http://138.68.140.83:8000`, bypassing browser Mixed Content HTTP/HTTPS errors).
    - `VITE_API_TOKEN`: `your_production_secret_token` (If applicable)
    - `VITE_AUTH0_DOMAIN`: `your-auth0-domain` (If using Auth0)
    - `VITE_AUTH0_CLIENT_ID`: `your-auth0-client-id` (If using Auth0)
