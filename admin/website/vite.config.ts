@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true,
       proxy: {
         '/api': {
-          target: env.BACKEND_API_URL,
+          target: env.VITE_BACKEND_API_URL,
           changeOrigin: true,
         },
       },
