@@ -6,14 +6,20 @@ function getBaseUrl(): string {
     (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
     "";
 
-  // If page is loaded over HTTPS (e.g. Vercel deployment) and API URL is HTTP,
+  const trimmed = (envUrl || "").trim().replace(/\/+$/, "");
+
+  // If page is loaded over HTTPS (e.g. Vercel deployment) and API URL is not secure HTTPS,
   // fallback to relative path ("") to route through Vercel /api reverse proxy and prevent Mixed Content blocking.
-  if (typeof window !== "undefined" && window.location.protocol === "https:" && envUrl.startsWith("http://")) {
-    console.warn("[API Service] HTTPS page detected with HTTP API URL. Routing via relative proxy (/api) to prevent Mixed Content errors.");
-    return "";
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    if (!trimmed.startsWith("https://")) {
+      console.warn(
+        `[API Service] HTTPS page detected with non-HTTPS API URL ("${trimmed}"). Routing via relative proxy (/api) to prevent Mixed Content errors.`
+      );
+      return "";
+    }
   }
 
-  return envUrl;
+  return trimmed;
 }
 
 const BASE_URL = getBaseUrl();
