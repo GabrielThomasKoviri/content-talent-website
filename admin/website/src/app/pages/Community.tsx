@@ -382,10 +382,10 @@ export default function Community() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Community</h1>
-          <p className="text-gray-600 mt-1">Engage with your audience and manage discussions</p>
+          <h1 className="text-3xl font-bold text-white">Community</h1>
+          <p className="text-slate-300 mt-1 font-medium">Engage with your audience and manage discussions</p>
         </div>
-        <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800" onClick={() => setAnnouncementOpen(true)}>
+        <Button className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-lg shadow-purple-600/20" onClick={() => setAnnouncementOpen(true)}>
           <Plus className="h-4 w-4" />New Announcement
         </Button>
       </div>
@@ -393,15 +393,15 @@ export default function Community() {
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
         {engagementStats.map((stat) => (
-          <Card key={stat.name}>
+          <Card key={stat.name} className="border-slate-800">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className={`${stat.bgColor} ${stat.color} p-3 rounded-lg`}>
                   <stat.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <div className="text-sm text-gray-600">{stat.name}</div>
+                  <div className="text-2xl font-bold text-white">{stat.value}</div>
+                  <div className="text-sm text-slate-300 font-medium">{stat.name}</div>
                 </div>
               </div>
             </CardContent>
@@ -410,24 +410,24 @@ export default function Community() {
       </div>
 
       {/* Announcements */}
-      <Card>
-        <CardHeader className="border-b"><CardTitle>Recent Announcements</CardTitle></CardHeader>
+      <Card className="border-slate-800">
+        <CardHeader className="border-b border-slate-800"><CardTitle className="text-white">Recent Announcements</CardTitle></CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
             {initialAnnouncements.map((a) => (
-              <div key={a.id} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+              <div key={a.id} className="border border-slate-800 rounded-xl p-4 hover:border-purple-500/50 transition-colors bg-slate-950/40">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-lg">{a.title}</h3>
-                  <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                  <h3 className="font-semibold text-lg text-slate-100">{a.title}</h3>
+                  <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-rose-400 hover:text-rose-300" /></Button>
                 </div>
-                <p className="text-gray-600 mb-3">{a.content}</p>
+                <p className="text-slate-300 mb-3 font-medium leading-relaxed">{a.content}</p>
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-4">
-                    <span className="text-gray-500">{a.date}</span>
-                    <span className="text-gray-500">{a.views.toLocaleString()} views</span>
+                    <span className="text-slate-400 font-medium">{a.date}</span>
+                    <span className="text-slate-400 font-medium">{a.views.toLocaleString()} views</span>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditAnnouncement(a)}>
-                    <Edit className="h-3.5 w-3.5" />Edit
+                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700" onClick={() => setEditAnnouncement(a)}>
+                    <Edit className="h-3.5 w-3.5 text-purple-400" />Edit
                   </Button>
                 </div>
               </div>
@@ -437,39 +437,39 @@ export default function Community() {
       </Card>
 
       {/* Comments with filters + pagination */}
-      <Card>
-        <CardHeader className="border-b">
+      <Card className="border-slate-800">
+        <CardHeader className="border-b border-slate-800">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <CardTitle>Comments</CardTitle>
-                <span className="text-sm text-gray-500">{totalCount} total</span>
+                <CardTitle className="text-white">Comments</CardTitle>
+                <span className="text-sm text-slate-400 font-medium">{totalCount} total</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input placeholder="Search comments..." className="pl-9 w-56"
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Input placeholder="Search comments..." className="pl-9 w-56 bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500"
                     value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
                 </div>
-                <Button variant={showFilters ? "default" : "outline"} className="gap-2"
+                <Button variant={showFilters ? "default" : "outline"} className={`gap-2 border-slate-800 ${showFilters ? "bg-purple-600 text-white hover:bg-purple-500" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
                   onClick={() => setShowFilters(!showFilters)}>
                   <SlidersHorizontal className="h-4 w-4" />
                   Filters
                   {activeFilterCount > 0 && (
-                    <span className="ml-1 bg-white text-purple-700 rounded-full text-xs font-bold px-1.5">{activeFilterCount}</span>
+                    <span className="ml-1 bg-white/20 text-white rounded-full text-xs font-bold px-1.5">{activeFilterCount}</span>
                   )}
                 </Button>
               </div>
             </div>
 
             {showFilters && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Category</Label>
+                    <Label className="text-xs mb-1 block text-slate-400 font-semibold uppercase tracking-wider">Category</Label>
                     <Select value={filterCategory} onValueChange={handleCategoryChange}>
-                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-9 text-sm bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                         <SelectItem value="all">All Categories</SelectItem>
                         {(dynamicCategories.length > 0 ? dynamicCategories : categories).map((c) => (
                           <SelectItem key={c} value={c}>{c}</SelectItem>
@@ -479,11 +479,11 @@ export default function Community() {
                   </div>
 
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Video</Label>
+                    <Label className="text-xs mb-1 block text-slate-400 font-semibold uppercase tracking-wider">Video</Label>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 text-sm w-full justify-start gap-1.5"
+                      className="h-9 text-sm w-full justify-start gap-1.5 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800"
                       disabled={filterCategory === "all"}
                       onClick={() => setVideoPickerOpen(true)}
                     >
@@ -494,21 +494,21 @@ export default function Community() {
                   </div>
 
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Date</Label>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm w-full justify-start"
+                    <Label className="text-xs mb-1 block text-slate-400 font-semibold uppercase tracking-wider">Date</Label>
+                    <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm w-full justify-start bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800"
                       onClick={() => setDatePickerOpen(true)}>
-                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                      <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
                       <span className="truncate flex-1 text-left">{filterDate || "Pick date"}</span>
                     </Button>
                   </div>
 
                   <div>
-                    <Label className="text-xs mb-1 block text-gray-500">Min Likes</Label>
+                    <Label className="text-xs mb-1 block text-slate-400 font-semibold uppercase tracking-wider">Min Likes</Label>
                     <Input
                       type="number"
                       min={0}
                       placeholder="e.g. 10"
-                      className="h-8 text-sm"
+                      className="h-9 text-sm bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500"
                       value={filterMinLikes}
                       onChange={(e) => { setFilterMinLikes(e.target.value); setPage(1); }}
                     />
@@ -517,10 +517,10 @@ export default function Community() {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-gray-500">Sort by:</Label>
+                    <Label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Sort by:</Label>
                     <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-                      <SelectTrigger className="h-8 text-sm w-36"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-8 text-sm w-36 bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                         <SelectItem value="newest">Newest first</SelectItem>
                         <SelectItem value="oldest">Oldest first</SelectItem>
                         <SelectItem value="mostLiked">Most liked</SelectItem>
@@ -528,7 +528,7 @@ export default function Community() {
                     </Select>
                   </div>
                   {activeFilterCount > 0 && (
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-gray-500 h-8" onClick={resetFilters}>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-purple-400 hover:text-purple-300 h-8" onClick={resetFilters}>
                       <X className="h-3 w-3" />Clear filters
                     </Button>
                   )}

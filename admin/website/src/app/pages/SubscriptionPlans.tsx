@@ -119,65 +119,65 @@ export default function SubscriptionPlans() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Subscription Plans</h1>
-          <p className="text-gray-600 mt-1">Create and manage your subscription tiers</p>
+          <h1 className="text-3xl font-bold text-white">Subscription Plans</h1>
+          <p className="text-slate-300 mt-1 font-medium">Create and manage your subscription tiers</p>
         </div>
-        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+        <Button className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-lg shadow-purple-600/20" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" />Create Plan
         </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {initialPlans.map((plan, index) => (
-          <Card key={index} className={plan.popular ? "border-purple-500 border-2" : ""}>
-            <CardHeader className="border-b">
+          <Card key={index} className={plan.popular ? "border-purple-500 border-2 shadow-[0_0_20px_rgba(168,85,247,0.2)]" : "border-slate-800"}>
+            <CardHeader className="border-b border-slate-800/80">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle>{plan.name}</CardTitle>
-                    {plan.popular && <Zap className="h-4 w-4 text-purple-600 fill-purple-600" />}
+                    <CardTitle className="text-xl font-bold text-white">{plan.name}</CardTitle>
+                    {plan.popular && <Zap className="h-4 w-4 text-purple-400 fill-purple-400" />}
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{plan.description}</p>
+                  <p className="text-sm text-slate-300 mt-1 font-medium">{plan.description}</p>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => setEditPlan(plan)}>
+                  <Button variant="ghost" size="icon" onClick={() => setEditPlan(plan)} className="text-slate-300 hover:text-white hover:bg-slate-800">
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon">
-                    <Trash2 className="h-4 w-4 text-red-600" />
+                  <Button variant="ghost" size="icon" className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/40">
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
               <div className="mt-4">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-gray-600">/{plan.period}</span>
+                  <span className="text-4xl font-bold text-white">{plan.price}</span>
+                  <span className="text-slate-400 text-sm font-medium">/{plan.period}</span>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4 mb-6">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Active Subscribers</span>
-                  <span className="font-semibold">{plan.subscribers.toLocaleString()}</span>
+                  <span className="text-slate-300 font-medium">Active Subscribers</span>
+                  <span className="font-semibold text-white">{plan.subscribers.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Monthly Revenue</span>
-                  <span className="font-semibold text-green-600">{plan.revenue}</span>
+                  <span className="text-slate-300 font-medium">Monthly Revenue</span>
+                  <span className="font-semibold text-emerald-400">{plan.revenue}</span>
                 </div>
               </div>
               <div className="space-y-3 mb-6">
-                <div className="font-medium text-sm">Features:</div>
+                <div className="font-semibold text-sm text-white">Features:</div>
                 {plan.features.map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-sm">
-                    <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-600">{feature}</span>
+                    <Check className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-slate-200 font-normal">{feature}</span>
                   </div>
                 ))}
               </div>
-              <div className="flex items-center gap-2 pt-4 border-t">
+              <div className="flex items-center gap-2 pt-4 border-t border-slate-800/80">
                 <Switch id={`plan-${index}`} defaultChecked={plan.active} />
-                <Label htmlFor={`plan-${index}`} className="text-sm">
+                <Label htmlFor={`plan-${index}`} className="text-sm font-medium text-slate-200">
                   {plan.active ? "Active" : "Inactive"}
                 </Label>
               </div>
@@ -186,18 +186,18 @@ export default function SubscriptionPlans() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Plan Comparison</CardTitle>
+      <Card className="border-slate-800">
+        <CardHeader className="border-b border-slate-800">
+          <CardTitle className="text-xl font-bold text-white">Plan Comparison</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">Feature</th>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left py-3 px-4 font-semibold text-slate-200">Feature</th>
                   {initialPlans.map((plan, idx) => (
-                    <th key={idx} className="text-center py-3 px-4 font-medium">{plan.name}</th>
+                    <th key={idx} className="text-center py-3 px-4 font-semibold text-slate-200">{plan.name}</th>
                   ))}
                 </tr>
               </thead>
@@ -209,11 +209,11 @@ export default function SubscriptionPlans() {
                   { label: "Downloadable Resources", values: ["-", "✓", "-"] },
                   { label: "Support", values: ["Email", "24/7 Priority", "Email"] },
                 ].map((row, ri) => (
-                  <tr key={ri} className={ri < 4 ? "border-b" : ""}>
-                    <td className="py-3 px-4 text-gray-600">{row.label}</td>
+                  <tr key={ri} className={ri < 4 ? "border-b border-slate-800/80 hover:bg-slate-800/40" : "hover:bg-slate-800/40"}>
+                    <td className="py-3.5 px-4 text-slate-200 font-medium">{row.label}</td>
                     {row.values.map((v, vi) => (
-                      <td key={vi} className="text-center py-3 px-4 text-sm">
-                        {v === "✓" ? <Check className="h-4 w-4 text-green-600 mx-auto" /> : v}
+                      <td key={vi} className="text-center py-3.5 px-4 text-sm text-slate-300 font-medium">
+                        {v === "✓" ? <Check className="h-4 w-4 text-emerald-400 mx-auto" /> : v}
                       </td>
                     ))}
                   </tr>

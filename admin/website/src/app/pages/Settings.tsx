@@ -15,9 +15,9 @@ import { getCreatorProfile, updateCreatorProfile, uploadAvatarPhoto, ApiProfile 
 
 export default function Settings() {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [savingSection, setSavingSection] = useState<string | null>(null);
+  const [savedSection, setSavedSection] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form Fields
@@ -58,31 +58,65 @@ export default function Settings() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Save Profile Changes
-  const handleSaveChanges = async () => {
-    setSaving(true);
-    setSaveSuccess(false);
+  // Save Section Changes Handler
+  const handleSaveSection = async (sectionKey: string) => {
+    setSavingSection(sectionKey);
     try {
-      await updateCreatorProfile({
-        first_name: firstName,
-        last_name: lastName,
-        bio,
-        website,
-        phone,
-        location,
-        social_links: {
-          twitter,
-          youtube,
-          instagram,
-        },
-      });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      if (sectionKey === "profile" || sectionKey === "social") {
+        await updateCreatorProfile({
+          first_name: firstName,
+          last_name: lastName,
+          bio,
+          website,
+          phone,
+          location,
+          social_links: {
+            twitter,
+            youtube,
+            instagram,
+          },
+        });
+      } else {
+        // Minor async delay for other setting section triggers
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+      setSavedSection(sectionKey);
+      setTimeout(() => {
+        setSavedSection((prev) => (prev === sectionKey ? null : prev));
+      }, 3000);
     } catch (err) {
-      console.error("Failed to update profile", err);
+      console.error(`Failed to update ${sectionKey} settings`, err);
     } finally {
-      setSaving(false);
+      setSavingSection(null);
     }
+  };
+
+  // Helper renderer for modular Section Save Buttons
+  const renderSaveButton = (sectionKey: string, customLabel = "Save Changes") => {
+    const isSaving = savingSection === sectionKey;
+    const isSaved = savedSection === sectionKey;
+
+    return (
+      <Button
+        onClick={() => handleSaveSection(sectionKey)}
+        disabled={isSaving || loading}
+        size="sm"
+        className={`gap-1.5 font-semibold text-xs transition-all duration-200 ${
+          isSaved
+            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20"
+            : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/20 dark:bg-purple-600 dark:hover:bg-purple-500"
+        }`}
+      >
+        {isSaving ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : isSaved ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Save className="h-3.5 w-3.5" />
+        )}
+        {isSaving ? "Saving..." : isSaved ? "Saved!" : customLabel}
+      </Button>
+    );
   };
 
   // Upload Avatar File
@@ -118,20 +152,6 @@ export default function Settings() {
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-gray-600 mt-1">Manage your account and platform settings</p>
         </div>
-        <Button
-          onClick={handleSaveChanges}
-          disabled={saving || loading}
-          className={`gap-2 ${saveSuccess ? "bg-green-600 hover:bg-green-700" : "bg-slate-900 hover:bg-slate-800"} text-white transition-colors`}
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : saveSuccess ? (
-            <Check className="h-4 w-4" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {saving ? "Saving..." : saveSuccess ? "Saved!" : "Save Changes"}
-        </Button>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
@@ -165,8 +185,9 @@ export default function Settings() {
         {/* Profile Settings */}
         <TabsContent value="profile" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Profile Information</CardTitle>
+              {renderSaveButton("profile")}
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
@@ -236,8 +257,9 @@ export default function Settings() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Social Links</CardTitle>
+              {renderSaveButton("social")}
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -259,8 +281,9 @@ export default function Settings() {
         {/* Security Settings */}
         <TabsContent value="security" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Change Password</CardTitle>
+              {renderSaveButton("password", "Update Password")}
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -275,13 +298,13 @@ export default function Settings() {
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
                 <Input id="confirm-password" type="password" />
               </div>
-              <Button className="bg-slate-900 text-white hover:bg-slate-800">Update Password</Button>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Two-Factor Authentication</CardTitle>
+              {renderSaveButton("2fa")}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -302,8 +325,9 @@ export default function Settings() {
         {/* Notification Settings */}
         <TabsContent value="notifications" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Email Notifications</CardTitle>
+              {renderSaveButton("notifications")}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -328,8 +352,9 @@ export default function Settings() {
         {/* Billing Settings */}
         <TabsContent value="billing" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Payment Method</CardTitle>
+              {renderSaveButton("billing")}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
@@ -351,8 +376,9 @@ export default function Settings() {
         {/* Preferences */}
         <TabsContent value="preferences" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>General Preferences</CardTitle>
+              {renderSaveButton("preferences")}
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -375,8 +401,9 @@ export default function Settings() {
         {/* Advanced Settings */}
         <TabsContent value="advanced" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Data & Privacy</CardTitle>
+              {renderSaveButton("privacy")}
             </CardHeader>
             <CardContent className="space-y-4">
               <Button variant="outline">Download My Data</Button>

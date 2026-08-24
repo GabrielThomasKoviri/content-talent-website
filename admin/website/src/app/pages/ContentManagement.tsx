@@ -2553,6 +2553,7 @@ function PlaylistDetailScreen({
   onEditMeta: (pl: Playlist) => void;
   onRefresh: () => void;
 }) {
+  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist>(playlist);
   const [playlistVideos, setPlaylistVideos] = useState<Content[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [selected, setSelected] = useState<number[]>([]);
@@ -2565,8 +2566,33 @@ function PlaylistDetailScreen({
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    setCurrentPlaylist(playlist);
     setCurrentThumbnail(playlist.thumbnailUrl);
-  }, [playlist.thumbnailUrl]);
+  }, [playlist]);
+
+  const fetchPlaylistDetails = useCallback(async () => {
+    try {
+      const detailsRes = await getPlaylistDetails(playlist.id);
+      if (detailsRes) {
+        setCurrentPlaylist((prev) => ({
+          ...prev,
+          title: detailsRes.title || prev.title,
+          description: detailsRes.description || (detailsRes as any).desc || (detailsRes as any).summary || (detailsRes as any).details || prev.description,
+          thumbnailUrl: detailsRes.thumbnailUrl || prev.thumbnailUrl,
+          videoIds: detailsRes.videoIds && detailsRes.videoIds.length > 0 ? detailsRes.videoIds : prev.videoIds,
+        }));
+        if (detailsRes.thumbnailUrl) {
+          setCurrentThumbnail(detailsRes.thumbnailUrl);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch details for playlist screen:", err);
+    }
+  }, [playlist.id]);
+
+  useEffect(() => {
+    fetchPlaylistDetails();
+  }, [fetchPlaylistDetails]);
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -2769,10 +2795,10 @@ function PlaylistDetailScreen({
                 </span>
               </div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight leading-tight">
-                {playlist.title}
+                {currentPlaylist.title}
               </h1>
               <p className="text-sm text-slate-300 leading-relaxed max-w-3xl line-clamp-3">
-                {playlist.description || "No description provided for this playlist."}
+                {currentPlaylist.description || "No description provided for this playlist."}
               </p>
             </div>
 
@@ -2820,7 +2846,7 @@ function PlaylistDetailScreen({
                 <Button
                   variant="outline"
                   className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-200 h-9 px-3.5 text-xs cursor-pointer"
-                  onClick={() => onEditMeta(playlist)}
+                  onClick={() => onEditMeta(currentPlaylist)}
                 >
                   <Pencil className="h-4 w-4 text-slate-400" /> Edit Details
                 </Button>
@@ -3092,13 +3118,19 @@ export default function ContentManagement() {
         const mappedPl: Playlist[] = pRes.data.map((item: ApiPlaylist) => ({
           id: item.id,
           title: item.title,
-          description: item.description || "",
+          description: item.description || (item as any).desc || (item as any).summary || (item as any).details || "",
           videos: item.videoCount ?? (item.videoIds ? item.videoIds.length : 0),
           videoIds: item.videoIds || [],
           date: item.date || new Date().toISOString().split("T")[0],
           thumbnailUrl: item.thumbnailUrl,
         }));
         setPlaylists(mappedPl);
+        if (activePlaylist) {
+          const updated = mappedPl.find((p) => p.id === activePlaylist.id);
+          if (updated) {
+            setActivePlaylist(updated);
+          }
+        }
       }
     } catch (err) {
       console.warn("Failed to fetch data from backend API", err);
@@ -3223,8 +3255,8 @@ export default function ContentManagement() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Content Management</h1>
-          <p className="text-slate-500 mt-1 text-sm font-medium">Upload, organize, and manage your OTT video library</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Content Management</h1>
+          <p className="text-slate-300 mt-1 text-sm font-medium">Upload, organize, and manage your OTT video library</p>
         </div>
         <div className="flex items-center gap-3">
         </div>

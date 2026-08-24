@@ -66,8 +66,8 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-md p-1.5 opacity-70 transition-opacity hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none z-10">
-        <XIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+      <DialogPrimitive.Close className="absolute top-4 right-4 rounded-md p-1.5 opacity-70 transition-opacity hover:opacity-100 hover:bg-slate-800 focus:ring-2 focus:ring-purple-500/50 focus:outline-none disabled:pointer-events-none z-10 text-slate-300">
+        <XIcon className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -105,7 +105,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     data-slot="dialog-title"
-    className={cn("text-lg font-bold text-slate-900 dark:text-white leading-tight", className)}
+    className={cn("text-lg font-bold text-white leading-tight", className)}
     {...props}
   />
 ));
@@ -118,7 +118,7 @@ const DialogDescription = React.forwardRef<
   <DialogPrimitive.Description
     ref={ref}
     data-slot="dialog-description"
-    className={cn("text-slate-500 dark:text-slate-400 text-sm", className)}
+    className={cn("text-slate-300 text-sm", className)}
     {...props}
   />
 ));

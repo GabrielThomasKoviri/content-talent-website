@@ -1,9 +1,29 @@
 // API Service module for communicating with Content Management backend REST endpoints
 
-const BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
-  "";
+function getBaseUrl(): string {
+  const envUrl =
+    (import.meta as any).env?.VITE_API_BASE_URL ||
+    (import.meta as any).env?.VITE_BACKEND_API_URL ||
+    (typeof window !== "undefined" && ((window as any).env?.VITE_API_BASE_URL || (window as any).env?.VITE_BACKEND_API_URL)) ||
+    "";
+
+  const trimmed = (envUrl || "").trim().replace(/\/+$/, "");
+
+  // If page is loaded over HTTPS (e.g. Vercel deployment) and API URL is not secure HTTPS,
+  // fallback to relative path ("") to route through Vercel /api reverse proxy and prevent Mixed Content blocking.
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    if (!trimmed.startsWith("https://")) {
+      console.warn(
+        `[API Service] HTTPS page detected with non-HTTPS API URL ("${trimmed}"). Routing via relative proxy (/api) to prevent Mixed Content errors.`
+      );
+      return "";
+    }
+  }
+
+  return trimmed;
+}
+
+const BASE_URL = getBaseUrl();
 
 // ── Types & Interfaces ──────────────────────────────────────────────────────
 
@@ -14,6 +34,7 @@ export interface ApiVideo {
   category?: string;
   status: string;
   views?: number | string;
+  likes?: number;
   duration?: string;
   date?: string;
   publishedAt?: string;
@@ -99,6 +120,31 @@ export interface ApiProfile {
   updatedAt?: string;
 }
 
+export interface ApiFeaturedVideoItem {
+  id: number;
+  videoId: number;
+  position: number;
+  title: string;
+  category?: string;
+  thumbnailUrl: string;
+  duration?: string;
+  views?: number;
+  likes?: number;
+  status?: string;
+  createdAt?: string;
+}
+
+export interface ApiAvailableFeaturedVideo {
+  id: number;
+  title: string;
+  category?: string;
+  duration?: string;
+  thumbnailUrl: string;
+  views?: number;
+  likes?: number;
+  createdAt?: string;
+}
+
 // ── Internal Helpers ────────────────────────────────────────────────────────
 
 function getAuthToken(): string {
@@ -179,6 +225,7 @@ function transformVideo(raw: any): ApiVideo {
     category: raw.category || "Uncategorized",
     status: raw.status ? String(raw.status) : "draft",
     views: raw.views_count ?? raw.views ?? 0,
+    likes: raw.likes_count ?? raw.likes ?? 0,
     duration: raw.duration || "0:00",
     date: raw.created_at ? raw.created_at.split("T")[0] : raw.date || new Date().toISOString().split("T")[0],
     publishedAt: raw.published_at || raw.publishedAt,
@@ -207,11 +254,12 @@ function transformVideo(raw: any): ApiVideo {
 function transformPlaylist(raw: any): ApiPlaylist {
   if (!raw) return raw;
   const nameVal = raw.name || raw.title || "Untitled Playlist";
+  const descVal = raw.description || raw.desc || raw.summary || raw.details || "";
   return {
     id: raw.id ?? raw.playlist_id,
     name: nameVal,
     title: nameVal,
-    description: raw.description || "",
+    description: descVal,
     videoCount: raw.video_count ?? raw.videoCount ?? (raw.video_ids ? raw.video_ids.length : 0),
     videos: raw.video_count ?? raw.videoCount ?? (raw.video_ids ? raw.video_ids.length : 0),
     videoIds: raw.video_ids || raw.videoIds || [],
@@ -471,14 +519,236 @@ export async function selectMainThumbnail(
 
 export async function deleteThumbnail(
   videoId: number,
-  slot?: number
+  slotOrUrl?: number | string
 ): Promise<{ status?: string; success?: boolean }> {
+  const payload = typeof slotOrUrl === "string"
+    ? { thumbnail_url: slotOrUrl }
+    : slotOrUrl !== undefined
+      ? { thumbnail_url: String(slotOrUrl), slot: slotOrUrl }
+      : { thumbnail_url: "" };
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${videoId}/thumbnails`, {
     method: "DELETE",
     headers: getAuthHeaders(),
-    body: slot !== undefined ? JSON.stringify({ slot }) : undefined,
+    body: JSON.stringify(payload),
   });
   return handleResponse(res);
+}
+
+// ── Branding API ────────────────────────────────────────────────────────────
+
+export interface ApiBranding {
+  creatorName: string;
+  tagline: string;
+  description: string;
+  bannerUrl: string;
+  logoUrl: string;
+  updatedAt?: string;
+}
+
+function transformBranding(raw: any): ApiBranding {
+  if (!raw) return { creatorName: "", tagline: "", description: "", bannerUrl: "", logoUrl: "" };
+  return {
+    creatorName: raw.creator_name || raw.creatorName || "",
+    tagline: raw.tagline || "",
+    description: raw.description || "",
+    bannerUrl: raw.banner_url || raw.bannerUrl || "",
+    logoUrl: raw.logo_url || raw.logoUrl || "",
+    updatedAt: raw.updated_at || raw.updatedAt,
+  };
+}
+
+export async function getCreatorBranding(): Promise<ApiBranding> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/admin/branding`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await handleResponse<any>(res);
+    return transformBranding(json);
+  } catch (err) {
+    console.warn("Branding API request failed", err);
+    throw err;
+  }
+}
+
+export async function updateCreatorBranding(data: {
+  creator_name?: string;
+  creatorName?: string;
+  tagline?: string;
+  description?: string;
+}): Promise<ApiBranding> {
+  const payload: any = {};
+  if (data.creator_name !== undefined) payload.creator_name = data.creator_name;
+  else if (data.creatorName !== undefined) payload.creator_name = data.creatorName;
+  if (data.tagline !== undefined) payload.tagline = data.tagline;
+  if (data.description !== undefined) payload.description = data.description;
+
+  const res = await fetch(`${BASE_URL}/api/v1/admin/branding`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await handleResponse<any>(res);
+  return transformBranding(json);
+}
+
+export async function uploadCreatorLogo(file: File): Promise<{ logoUrl: string }> {
+  const formData = new FormData();
+  formData.append("logo", file);
+
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/v1/admin/branding/logo`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  const json = await handleResponse<any>(res);
+  return {
+    logoUrl: json.logo_url || json.logoUrl || "",
+  };
+}
+
+export async function uploadCreatorBanner(file: File): Promise<{ bannerUrl: string }> {
+  const formData = new FormData();
+  formData.append("banner", file);
+
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/v1/admin/branding/banner`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  const json = await handleResponse<any>(res);
+  return {
+    bannerUrl: json.banner_url || json.bannerUrl || "",
+  };
+}
+
+// ── Featured Videos API ────────────────────────────────────────────────────
+
+export async function getFeaturedVideos(): Promise<ApiFeaturedVideoItem[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await handleResponse<any[]>(res);
+    return (json || []).map((raw: any) => ({
+      id: raw.id,
+      videoId: raw.video_id ?? raw.videoId ?? raw.id,
+      position: raw.position ?? 1,
+      title: raw.title || "",
+      category: raw.category || "General",
+      thumbnailUrl: raw.main_thumbnail_url || raw.thumbnail_url || raw.thumbnailUrl || "",
+      duration: raw.duration || "00:00",
+      views: raw.views ?? 0,
+      likes: raw.likes ?? 0,
+      status: raw.status || "published",
+      createdAt: raw.created_at || raw.createdAt,
+    }));
+  } catch (err) {
+    console.warn("Failed to fetch featured videos from API", err);
+    throw err;
+  }
+}
+
+export async function addFeaturedVideos(videoIds: number[]): Promise<{ addedCount: number; totalFeatured: number }> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ video_ids: videoIds }),
+  });
+  const json = await handleResponse<any>(res);
+  return {
+    addedCount: json.added_count ?? videoIds.length,
+    totalFeatured: json.total_featured ?? 0,
+  };
+}
+
+export async function reorderFeaturedVideos(videoIds: number[]): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/reorder`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ video_ids: videoIds }),
+  });
+  await handleResponse<any>(res);
+  return true;
+}
+
+export async function deleteFeaturedVideo(videoId: number): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/${videoId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  await handleResponse<any>(res);
+  return true;
+}
+
+export async function bulkDeleteFeaturedVideos(videoIds: number[]): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ video_ids: videoIds }),
+  });
+  await handleResponse<any>(res);
+  return true;
+}
+
+export async function getAvailableVideosForFeatured(params?: {
+  search?: string;
+  category?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ items: ApiAvailableFeaturedVideo[]; total: number }> {
+  try {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.category) query.append("category", params.category);
+    if (params?.sort) query.append("sort", params.sort);
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
+
+    const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/available?${query.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    if (res.ok) {
+      const json = await handleResponse<any>(res);
+      const itemsRaw = json.items || json.data || (Array.isArray(json) ? json : []);
+      if (Array.isArray(itemsRaw) && itemsRaw.length > 0) {
+        const items = itemsRaw.map((raw: any) => ({
+          id: raw.id,
+          title: raw.title || "",
+          category: raw.category || "General",
+          duration: raw.duration || "00:00",
+          thumbnailUrl: raw.main_thumbnail_url || raw.thumbnail_url || raw.thumbnailUrl || "",
+          views: raw.views ?? 0,
+          likes: raw.likes ?? 0,
+          createdAt: raw.created_at || raw.createdAt,
+        }));
+        return { items, total: json.total ?? items.length };
+      }
+    }
+  } catch (err) {
+    console.warn("Featured-videos/available endpoint fallback to /admin/videos:", err);
+  }
+
+  // Fallback to getVideos() -> GET /api/v1/admin/videos
+  try {
+    const videosRes = await getVideos({ search: params?.search, category: params?.category, sort: params?.sort });
+    const items: ApiAvailableFeaturedVideo[] = (videosRes.data || []).map((v) => ({
+      id: v.id,
+      title: v.title || "",
+      category: v.category || "General",
+      duration: v.duration || "00:00",
+      thumbnailUrl: v.thumbnailUrl || v.mainThumbnailUrl || "",
+      views: typeof v.views === "number" ? v.views : parseInt(String(v.views || 0), 10) || 0,
+      likes: v.likes ?? 0,
+      createdAt: v.createdAt,
+    }));
+    return { items, total: items.length };
+  } catch (err) {
+    console.warn("Failed to fetch available videos fallback:", err);
+    return { items: [], total: 0 };
+  }
 }
 
 // ── Playlists API ──────────────────────────────────────────────────────────
@@ -500,10 +770,34 @@ export async function getPlaylists(params?: {
       headers: getAuthHeaders(),
     });
     const json = await handleResponse<any>(res);
+    const rawList = Array.isArray(json) ? json : (json.data || json.items || []);
+
+    const playlists: ApiPlaylist[] = await Promise.all(
+      (Array.isArray(rawList) ? rawList : []).map(async (rawItem: any) => {
+        const pl = transformPlaylist(rawItem);
+        if ((!pl.description || !pl.thumbnailUrl) && pl.id) {
+          try {
+            const detailRes = await fetch(`${BASE_URL}/api/v1/admin/playlists/${pl.id}`, {
+              headers: getAuthHeaders(),
+            });
+            if (detailRes.ok) {
+              const detailJson = await detailRes.json();
+              const fullPl = transformPlaylist(detailJson);
+              if (fullPl.description) pl.description = fullPl.description;
+              if (fullPl.thumbnailUrl) pl.thumbnailUrl = fullPl.thumbnailUrl;
+            }
+          } catch (e) {
+            // ignore individual detail fetch error
+          }
+        }
+        return pl;
+      })
+    );
+
     return {
-      data: (json.data || json.items || json || []).map(transformPlaylist),
+      data: playlists,
       pagination: {
-        total: json.total ?? json.pagination?.total ?? 0,
+        total: json.total ?? json.pagination?.total ?? playlists.length,
         page: json.page ?? json.pagination?.page ?? 1,
         limit: json.limit ?? json.pagination?.limit ?? 20,
         totalPages: json.total_pages ?? json.pagination?.totalPages ?? 1,
@@ -531,12 +825,15 @@ export async function createPlaylist(data: {
   video_ids?: number[];
 }): Promise<ApiPlaylist> {
   const nameVal = data.name || data.title || "Untitled Playlist";
+  const descVal = data.description || "";
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
       name: nameVal,
-      description: data.description || "",
+      title: nameVal,
+      description: descVal,
+      desc: descVal,
       video_ids: data.video_ids || data.videoIds || [],
     }),
   });
@@ -549,12 +846,13 @@ export async function updatePlaylist(
   data: { name?: string; title?: string; description?: string }
 ): Promise<ApiPlaylist> {
   const nameVal = data.name || data.title || "";
+  const descVal = data.description;
   const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({
-      name: nameVal,
-      description: data.description,
+      ...(nameVal ? { name: nameVal, title: nameVal } : {}),
+      ...(descVal !== undefined ? { description: descVal, desc: descVal } : {}),
     }),
   });
   const json = await handleResponse<any>(res);

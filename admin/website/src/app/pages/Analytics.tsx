@@ -77,23 +77,23 @@ export default function Analytics() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-gray-600 mt-1">Track your content performance and audience insights</p>
+          <h1 className="text-3xl font-bold text-white">Analytics</h1>
+          <p className="text-slate-300 mt-1 font-medium">Track your content performance and audience insights</p>
         </div>
         <div className="flex gap-2">
           <Select defaultValue="30">
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 bg-slate-950/80 border-slate-800 text-slate-100">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
               <SelectItem value="7">Last 7 days</SelectItem>
               <SelectItem value="30">Last 30 days</SelectItem>
               <SelectItem value="90">Last 90 days</SelectItem>
               <SelectItem value="365">Last year</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
+          <Button variant="outline" className="gap-2 border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800">
+            <Download className="h-4 w-4 text-purple-400" />
             Export
           </Button>
         </div>
@@ -102,13 +102,13 @@ export default function Analytics() {
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.name}>
+          <Card key={metric.name} className="border-slate-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <metric.icon className="h-5 w-5 text-gray-400" />
+                <metric.icon className="h-5 w-5 text-purple-400" />
                 <div
-                  className={`flex items-center gap-1 text-sm font-medium ${
-                    metric.trend === "up" ? "text-green-600" : "text-red-600"
+                  className={`flex items-center gap-1 text-sm font-semibold ${
+                    metric.trend === "up" ? "text-emerald-400" : "text-rose-400"
                   }`}
                 >
                   {metric.trend === "up" ? (
@@ -119,19 +119,19 @@ export default function Analytics() {
                   {metric.change}
                 </div>
               </div>
-              <div className="text-2xl font-bold">{metric.value}</div>
-              <div className="text-sm text-gray-600">{metric.name}</div>
+              <div className="text-2xl font-bold text-white">{metric.value}</div>
+              <div className="text-sm text-slate-300 font-medium">{metric.name}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Views and Watch Time Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Views & Watch Time Trends</CardTitle>
+      <Card className="border-slate-800">
+        <CardHeader className="border-b border-slate-800">
+          <CardTitle className="text-white">Views & Watch Time Trends</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={viewsData}>
               <defs>
@@ -144,11 +144,11 @@ export default function Analytics() {
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="date" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis dataKey="date" stroke="#94a3b8" />
+              <YAxis stroke="#94a3b8" />
+              <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc' }} />
+              <Legend wrapperStyle={{ color: '#cbd5e1' }} />
               <Area
                 key="views"
                 type="monotone"
@@ -174,18 +174,18 @@ export default function Analytics() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Engagement by Category */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Engagement by Category</CardTitle>
+        <Card className="border-slate-800">
+          <CardHeader className="border-b border-slate-800">
+            <CardTitle className="text-white">Engagement by Category</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={engagementData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="category" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
-                <Tooltip />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="category" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc' }} />
+                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                 <Bar key="engagement" dataKey="engagement" fill="#8b5cf6" name="Engagement Rate (%)" />
                 <Bar key="avgDuration" dataKey="avgDuration" fill="#3b82f6" name="Avg Duration (mins)" />
               </BarChart>
@@ -194,32 +194,32 @@ export default function Analytics() {
         </Card>
 
         {/* Device Usage */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Distribution</CardTitle>
+        <Card className="border-slate-800">
+          <CardHeader className="border-b border-slate-800">
+            <CardTitle className="text-white">Device Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="space-y-4">
               {deviceData.map((device, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{device.device}</span>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm font-semibold text-slate-200">{device.device}</span>
+                    <span className="text-sm text-slate-300 font-medium">
                       {device.users.toLocaleString()} users ({device.percentage}%)
                     </span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-600 to-blue-600"
+                      className="h-full bg-gradient-to-r from-purple-600 to-blue-600 rounded-full"
                       style={{ width: `${device.percentage}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-6 pt-6 border-t">
-              <div className="text-sm font-medium mb-3">Device Insights</div>
-              <div className="space-y-2 text-sm text-gray-600">
+            <div className="mt-6 pt-6 border-t border-slate-800">
+              <div className="text-sm font-semibold text-white mb-3">Device Insights</div>
+              <div className="space-y-2 text-sm text-slate-300 font-medium">
                 <p>• Mobile users have increased by 12% this month</p>
                 <p>• Desktop users spend 38% more time per session</p>
                 <p>• Tablet users prefer educational content</p>
@@ -230,29 +230,29 @@ export default function Analytics() {
       </div>
 
       {/* Geographic Distribution */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Countries</CardTitle>
+      <Card className="border-slate-800">
+        <CardHeader className="border-b border-slate-800">
+          <CardTitle className="text-white">Top Countries</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="space-y-4">
             {topCountries.map((country, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+                className="flex items-center justify-between border-b border-slate-800/80 pb-4 last:border-0 last:pb-0"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{country.flag}</span>
-                  <span className="font-medium">{country.country}</span>
+                  <span className="font-semibold text-slate-200">{country.country}</span>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <div className="font-semibold">{country.users.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500">users</div>
+                    <div className="font-bold text-white">{country.users.toLocaleString()}</div>
+                    <div className="text-xs text-slate-400 font-medium">users</div>
                   </div>
-                  <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="w-32 h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-600 to-blue-600"
+                      className="h-full bg-gradient-to-r from-purple-600 to-blue-600 rounded-full"
                       style={{ width: `${(country.users / topCountries[0].users) * 100}%` }}
                     />
                   </div>
