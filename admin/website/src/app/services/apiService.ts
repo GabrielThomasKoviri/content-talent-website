@@ -852,27 +852,7 @@ export async function getPlaylists(params?: {
     const json = await handleResponse<any>(res);
     const rawList = Array.isArray(json) ? json : (json.data || json.items || []);
 
-    const playlists: ApiPlaylist[] = await Promise.all(
-      (Array.isArray(rawList) ? rawList : []).map(async (rawItem: any) => {
-        const pl = transformPlaylist(rawItem);
-        if ((!pl.description || !pl.thumbnailUrl) && pl.id) {
-          try {
-            const detailRes = await fetch(`${BASE_URL}/api/v1/admin/playlists/${pl.id}`, {
-              headers: getAuthHeaders(),
-            });
-            if (detailRes.ok) {
-              const detailJson = await detailRes.json();
-              const fullPl = transformPlaylist(detailJson);
-              if (fullPl.description) pl.description = fullPl.description;
-              if (fullPl.thumbnailUrl) pl.thumbnailUrl = fullPl.thumbnailUrl;
-            }
-          } catch (e) {
-            // ignore individual detail fetch error
-          }
-        }
-        return pl;
-      })
-    );
+    const playlists: ApiPlaylist[] = (Array.isArray(rawList) ? rawList : []).map(transformPlaylist);
 
     return {
       data: playlists,
