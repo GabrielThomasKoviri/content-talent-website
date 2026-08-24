@@ -627,9 +627,14 @@ export async function uploadCreatorBanner(file: File): Promise<{ bannerUrl: stri
 
 export async function getFeaturedVideos(): Promise<ApiFeaturedVideoItem[]> {
   try {
-    const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+    let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
       headers: getAuthHeaders(),
     });
+    if (res.status === 404) {
+      res = await fetch(`${BASE_URL}/featured-videos`, {
+        headers: getAuthHeaders(),
+      });
+    }
     const json = await handleResponse<any[]>(res);
     return (json || []).map((raw: any) => ({
       id: raw.id,
@@ -651,11 +656,18 @@ export async function getFeaturedVideos(): Promise<ApiFeaturedVideoItem[]> {
 }
 
 export async function addFeaturedVideos(videoIds: number[]): Promise<{ addedCount: number; totalFeatured: number }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ video_ids: videoIds }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/featured-videos`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+  }
   const json = await handleResponse<any>(res);
   return {
     addedCount: json.added_count ?? videoIds.length,
@@ -664,30 +676,50 @@ export async function addFeaturedVideos(videoIds: number[]): Promise<{ addedCoun
 }
 
 export async function reorderFeaturedVideos(videoIds: number[]): Promise<boolean> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/reorder`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/reorder`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({ video_ids: videoIds }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/featured-videos/reorder`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+  }
   await handleResponse<any>(res);
   return true;
 }
 
 export async function deleteFeaturedVideo(videoId: number): Promise<boolean> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/${videoId}`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/${videoId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/featured-videos/${videoId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+  }
   await handleResponse<any>(res);
   return true;
 }
 
 export async function bulkDeleteFeaturedVideos(videoIds: number[]): Promise<boolean> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
     method: "DELETE",
     headers: getAuthHeaders(),
     body: JSON.stringify({ video_ids: videoIds }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/featured-videos`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+  }
   await handleResponse<any>(res);
   return true;
 }
@@ -707,21 +739,26 @@ export async function getAvailableVideosForFeatured(params?: {
     if (params?.page) query.append("page", params.page.toString());
     if (params?.limit) query.append("limit", params.limit.toString());
 
-    const res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/available?${query.toString()}`, {
+    let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos/available?${query.toString()}`, {
       headers: getAuthHeaders(),
     });
+    if (res.status === 404) {
+      res = await fetch(`${BASE_URL}/featured-videos/available?${query.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+    }
     if (res.ok) {
       const json = await handleResponse<any>(res);
       const itemsRaw = json.items || json.data || (Array.isArray(json) ? json : []);
       if (Array.isArray(itemsRaw) && itemsRaw.length > 0) {
-        const items = itemsRaw.map((raw: any) => ({
+        const items: ApiAvailableFeaturedVideo[] = itemsRaw.map((raw: any) => ({
           id: raw.id,
           title: raw.title || "",
           category: raw.category || "General",
           duration: raw.duration || "00:00",
           thumbnailUrl: raw.main_thumbnail_url || raw.thumbnail_url || raw.thumbnailUrl || "",
-          views: raw.views ?? 0,
-          likes: raw.likes ?? 0,
+          views: typeof raw.views === "number" ? raw.views : parseInt(String(raw.views || 0), 10) || 0,
+          likes: typeof raw.likes === "number" ? raw.likes : parseInt(String(raw.likes || 0), 10) || 0,
           createdAt: raw.created_at || raw.createdAt,
         }));
         return { items, total: json.total ?? items.length };
