@@ -949,18 +949,7 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
         try {
           let currentVideoIds = [...initialIds];
 
-          // 1. Call GET playlist details API
-          const detailsRes = await getPlaylistDetails(playlist.id);
-          if (detailsRes) {
-            if (detailsRes.title) setTitle(detailsRes.title);
-            if (detailsRes.description !== undefined) setDescription(detailsRes.description);
-            if (detailsRes.thumbnailUrl) setThumbnailUrl(detailsRes.thumbnailUrl);
-            if (Array.isArray(detailsRes.videoIds) && detailsRes.videoIds.length > 0) {
-              currentVideoIds = detailsRes.videoIds;
-            }
-          }
-
-          // 2. Call GET playlist videos API
+          // Fetch playlist videos API
           let fetchedVideos: Content[] = [];
           try {
             const videosRes = await getPlaylistVideos(playlist.id);
