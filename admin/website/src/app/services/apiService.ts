@@ -3,7 +3,8 @@
 function getBaseUrl(): string {
   const envUrl =
     (import.meta as any).env?.VITE_API_BASE_URL ||
-    (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
+    (import.meta as any).env?.VITE_BACKEND_API_URL ||
+    (typeof window !== "undefined" && ((window as any).env?.VITE_API_BASE_URL || (window as any).env?.VITE_BACKEND_API_URL)) ||
     "";
 
   const trimmed = (envUrl || "").trim().replace(/\/+$/, "");
