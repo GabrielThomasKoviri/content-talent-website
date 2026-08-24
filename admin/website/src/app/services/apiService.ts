@@ -841,9 +841,14 @@ export async function getPlaylists(params?: {
     if (params?.page) query.append("page", params.page.toString());
     if (params?.limit) query.append("limit", params.limit.toString());
 
-    const res = await fetch(`${BASE_URL}/api/v1/admin/playlists?${query.toString()}`, {
+    let res = await fetch(`${BASE_URL}/api/v1/admin/playlists?${query.toString()}`, {
       headers: getAuthHeaders(),
     });
+    if (res.status === 404) {
+      res = await fetch(`${BASE_URL}/playlists?${query.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+    }
     const json = await handleResponse<any>(res);
     const rawList = Array.isArray(json) ? json : (json.data || json.items || []);
 
@@ -885,9 +890,14 @@ export async function getPlaylists(params?: {
 }
 
 export async function getPlaylistDetails(id: number): Promise<ApiPlaylist> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
     headers: getAuthHeaders(),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${id}`, {
+      headers: getAuthHeaders(),
+    });
+  }
   const json = await handleResponse<any>(res);
   return transformPlaylist(json);
 }
@@ -901,17 +911,28 @@ export async function createPlaylist(data: {
 }): Promise<ApiPlaylist> {
   const nameVal = data.name || data.title || "Untitled Playlist";
   const descVal = data.description || "";
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists`, {
+  const videoIds = data.video_ids || data.videoIds || [];
+
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
       name: nameVal,
-      title: nameVal,
       description: descVal,
-      desc: descVal,
-      video_ids: data.video_ids || data.videoIds || [],
+      video_ids: videoIds,
     }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        name: nameVal,
+        description: descVal,
+        video_ids: videoIds,
+      }),
+    });
+  }
   const json = await handleResponse<any>(res);
   return transformPlaylist(json);
 }
@@ -922,23 +943,37 @@ export async function updatePlaylist(
 ): Promise<ApiPlaylist> {
   const nameVal = data.name || data.title || "";
   const descVal = data.description;
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
+  const payload: any = {};
+  if (nameVal) payload.name = nameVal;
+  if (descVal !== undefined) payload.description = descVal;
+
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify({
-      ...(nameVal ? { name: nameVal, title: nameVal } : {}),
-      ...(descVal !== undefined ? { description: descVal, desc: descVal } : {}),
-    }),
+    body: JSON.stringify(payload),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+  }
   const json = await handleResponse<any>(res);
   return transformPlaylist(json);
 }
 
 export async function deletePlaylist(id: number): Promise<{ status?: string; success?: boolean }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+  }
   return handleResponse(res);
 }
 
@@ -950,11 +985,18 @@ export async function uploadPlaylistBanner(
   formData.append("file", file);
 
   const token = getAuthToken();
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/thumbnail/upload`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/thumbnail/upload`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${playlistId}/thumbnail/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+  }
   return handleResponse(res);
 }
 
@@ -967,9 +1009,14 @@ export async function getPlaylistVideos(
   if (params?.page) query.append("page", params.page.toString());
   if (params?.limit) query.append("limit", params.limit.toString());
 
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos?${query.toString()}`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos?${query.toString()}`, {
     headers: getAuthHeaders(),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${playlistId}/videos?${query.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+  }
   const json = await handleResponse<any>(res);
   return {
     data: (json.data || json.items || json || []).map(transformVideo),
@@ -986,11 +1033,18 @@ export async function addVideosToPlaylist(
   playlistId: number,
   videoIds: number[]
 ): Promise<{ status?: string; success?: boolean }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ video_ids: videoIds }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${playlistId}/videos`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+  }
   return handleResponse(res);
 }
 
@@ -998,13 +1052,22 @@ export async function removeVideoFromPlaylist(
   playlistId: number,
   videoId: number
 ): Promise<{ status?: string; success?: boolean }> {
-  const res = await fetch(
+  let res = await fetch(
     `${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos/${videoId}`,
     {
       method: "DELETE",
       headers: getAuthHeaders(),
     }
   );
+  if (res.status === 404) {
+    res = await fetch(
+      `${BASE_URL}/playlists/${playlistId}/videos/${videoId}`,
+      {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }
+    );
+  }
   return handleResponse(res);
 }
 
@@ -1012,11 +1075,18 @@ export async function bulkRemoveVideosFromPlaylist(
   playlistId: number,
   videoIds: number[]
 ): Promise<{ status?: string; success?: boolean }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos`, {
     method: "DELETE",
     headers: getAuthHeaders(),
     body: JSON.stringify({ video_ids: videoIds }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${playlistId}/videos`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+  }
   return handleResponse(res);
 }
 
@@ -1031,10 +1101,16 @@ export async function getAvailableVideosForPlaylist(
   if (params?.page) query.append("page", params.page.toString());
   if (params?.limit) query.append("limit", params.limit.toString());
 
-  const res = await fetch(
+  let res = await fetch(
     `${BASE_URL}/api/v1/admin/playlists/${playlistId}/available_videos?${query.toString()}`,
     { headers: getAuthHeaders() }
   );
+  if (res.status === 404) {
+    res = await fetch(
+      `${BASE_URL}/playlists/${playlistId}/available_videos?${query.toString()}`,
+      { headers: getAuthHeaders() }
+    );
+  }
   const json = await handleResponse<any>(res);
   return {
     data: (json.data || json.items || json || []).map(transformVideo),
@@ -1051,11 +1127,18 @@ export async function reorderPlaylistVideos(
   playlistId: number,
   videoOrders: { video_id: number; order: number }[]
 ): Promise<{ status?: string; success?: boolean }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos/reorder`, {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${playlistId}/videos/reorder`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({ video_orders: videoOrders }),
   });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${playlistId}/videos/reorder`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_orders: videoOrders }),
+    });
+  }
   return handleResponse(res);
 }
 
