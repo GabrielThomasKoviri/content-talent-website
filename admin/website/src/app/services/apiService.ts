@@ -655,6 +655,44 @@ export async function getFeaturedVideos(): Promise<ApiFeaturedVideoItem[]> {
   }
 }
 
+export async function updateFeaturedVideos(videoIds: number[]): Promise<boolean> {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ video_ids: videoIds }),
+  });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/featured-videos`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ video_ids: videoIds }),
+    });
+  }
+
+  if (res.ok) {
+    await handleResponse<any>(res);
+    return true;
+  }
+
+  // Fallback if PUT full state sync endpoint is not enabled: try POST + PUT /reorder
+  if (res.status === 405 || res.status === 404) {
+    if (videoIds.length > 0) {
+      await addFeaturedVideos(videoIds);
+      await reorderFeaturedVideos(videoIds);
+    } else {
+      try {
+        await bulkDeleteFeaturedVideos([]);
+      } catch (_) {}
+    }
+    return true;
+  }
+
+  await handleResponse<any>(res);
+  return true;
+}
+
+export const saveFeaturedVideos = updateFeaturedVideos;
+
 export async function addFeaturedVideos(videoIds: number[]): Promise<{ addedCount: number; totalFeatured: number }> {
   let res = await fetch(`${BASE_URL}/api/v1/admin/featured-videos`, {
     method: "POST",

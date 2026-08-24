@@ -29,6 +29,7 @@ import {
   uploadCreatorLogo,
   uploadCreatorBanner,
   getFeaturedVideos,
+  updateFeaturedVideos,
   addFeaturedVideos,
   reorderFeaturedVideos,
   deleteFeaturedVideo,
@@ -325,14 +326,7 @@ export default function Branding() {
     setIsSavingFeaturedBanners(true);
     try {
       const videoIds = featuredBanners.map((b) => b.videoId).filter(Boolean);
-      if (videoIds.length > 0) {
-        await addFeaturedVideos(videoIds);
-        await reorderFeaturedVideos(videoIds);
-      } else {
-        try {
-          await reorderFeaturedVideos([]);
-        } catch (_) {}
-      }
+      await updateFeaturedVideos(videoIds);
       setSaveFeaturedBannersSuccess(true);
       setTimeout(() => {
         setSaveFeaturedBannersSuccess(false);
