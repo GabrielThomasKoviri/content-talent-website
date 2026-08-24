@@ -4,7 +4,7 @@ import * as tus from "tus-js-client";
 import {
   getVideos, getVideoDetails, initiateVideoUpload, updateVideo,
   deleteVideo, bulkDeleteVideos, publishVideo, scheduleVideo,
-  uploadThumbnail, selectMainThumbnail, getPlaylists, getPlaylistDetails, createPlaylist, updatePlaylist,
+  uploadThumbnail, selectMainThumbnail, getPlaylists, createPlaylist, updatePlaylist,
   deletePlaylist, addVideosToPlaylist, removeVideoFromPlaylist,
   bulkRemoveVideosFromPlaylist, uploadPlaylistBanner, getPlaylistVideos,
   getAvailableVideosForPlaylist, reorderPlaylistVideos, getCategories,
