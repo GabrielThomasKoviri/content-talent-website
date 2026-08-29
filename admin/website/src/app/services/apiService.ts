@@ -869,6 +869,19 @@ export async function getPlaylists(params?: {
   }
 }
 
+export async function getPlaylistDetails(id: number): Promise<ApiPlaylist> {
+  let res = await fetch(`${BASE_URL}/api/v1/admin/playlists/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  if (res.status === 404) {
+    res = await fetch(`${BASE_URL}/playlists/${id}`, {
+      headers: getAuthHeaders(),
+    });
+  }
+  const json = await handleResponse<any>(res);
+  return transformPlaylist(json);
+}
+
 
 export async function createPlaylist(data: {
   name?: string;
