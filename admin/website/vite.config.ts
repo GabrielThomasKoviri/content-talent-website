@@ -4,7 +4,7 @@ export default defineConfig(({ mode }) => {
   // Load environment variables based on current mode (e.g. .env file)
   const env = loadEnv(mode, process.cwd(), '');
 
-  const targetUrl = (env.VITE_BACKEND_API_URL || env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '');
+  const targetUrl = (env.VITE_API_BASE_URL || env.VITE_BACKEND_API_URL || '').trim().replace(/\/+$/, '');
 
   const proxyConfig = targetUrl
     ? {
