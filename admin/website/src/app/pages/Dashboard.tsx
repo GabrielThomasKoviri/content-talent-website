@@ -136,7 +136,7 @@ export default function Dashboard() {
   // Fetch Top Performing Videos
   const fetchTopVideos = useCallback(async () => {
     try {
-      const res = await getVideos({ limit: 4, sort: "views" });
+      const res = await getVideos({ status: "published", limit: 4, sort: "views" });
       const rawList = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       const sorted = [...rawList].sort((a, b) => {
         const vA = typeof a.views === "number" ? a.views : parseInt(String(a.views || 0), 10) || 0;

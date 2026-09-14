@@ -15,8 +15,7 @@ function getBaseUrl(): string {
 
   const envUrl =
     (import.meta as any).env?.VITE_API_BASE_URL ||
-    (import.meta as any).env?.VITE_BACKEND_API_URL ||
-    (typeof window !== "undefined" && ((window as any).env?.VITE_API_BASE_URL || (window as any).env?.VITE_BACKEND_API_URL)) ||
+    (typeof window !== "undefined" && (window as any).env?.VITE_API_BASE_URL) ||
     "";
 
   const trimmed = (envUrl || "").trim().replace(/\/+$/, "");
@@ -1378,7 +1377,7 @@ export async function getSubscribers(params?: {
         plan: item.planName || (item.isPaid ? "Paid Plan" : "Free"),
         status: item.isPaid ? "Active" : "Free",
         joinDate: item.joinedAt ? item.joinedAt.split("T")[0] : new Date().toISOString().split("T")[0],
-        revenue: item.isPaid ? "₹499" : "₹0",
+        revenue: item.isPaid ? "Paid" : "₹0",
         avatarUrl: item.avatarUrl || undefined,
       }));
     }

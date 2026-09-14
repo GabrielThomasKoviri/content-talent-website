@@ -88,7 +88,27 @@ export default function Subscribers() {
         getDashboardSubscriptionBreakdown().catch(() => null),
         getSubscriptionPlans().catch(() => []),
       ]);
-      setSubscribers(subsData || []);
+      let enrichedSubs = subsData || [];
+      if (plansData && plansData.length > 0) {
+        enrichedSubs = enrichedSubs.map((sub) => {
+          if (!sub.status || sub.status.toLowerCase() === "free" || !sub.plan || sub.plan.toLowerCase() === "free") {
+            return { ...sub, revenue: "₹0" };
+          }
+          const matchedPlan = plansData.find(
+            (p) => p.name.trim().toLowerCase() === sub.plan.trim().toLowerCase()
+          );
+          if (matchedPlan) {
+            const price = matchedPlan.final_price ?? matchedPlan.base_price ?? 0;
+            const symbol = matchedPlan.currency === "INR" || !matchedPlan.currency ? "₹" : matchedPlan.currency;
+            return {
+              ...sub,
+              revenue: `${symbol}${price}`,
+            };
+          }
+          return sub;
+        });
+      }
+      setSubscribers(enrichedSubs);
       if (statsData) setStats(statsData);
       if (breakdownData) setBreakdown(breakdownData);
       if (plansData) setAvailablePlans(plansData);

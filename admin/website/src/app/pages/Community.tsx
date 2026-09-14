@@ -25,7 +25,6 @@ import {
 
 type Announcement = { id: number; title: string; content: string; date: string; views: number };
 
-type Announcement = { id: number; title: string; content: string; date: string; views: number };
 
 const PAGE_SIZE = 5;
 
