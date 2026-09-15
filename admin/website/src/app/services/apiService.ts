@@ -158,6 +158,7 @@ export interface ApiAvailableFeaturedVideo {
 
 export interface ApiSubscriptionPlan {
   id: number;
+  plan_type?: "with_ads" | "no_ads" | string;
   name: string;
   description?: string | null;
   base_price: number;
@@ -190,25 +191,71 @@ export interface CreateSubscriptionPlanPayload {
 
 export interface UpdateSubscriptionPlanPayload {
   name?: string | null;
+  description?: string | null;
   base_price?: number | null;
   discount_percentage?: number | null;
-  billing_period_value?: number | null;
-  billing_period_unit?: string | null;
-  description?: string | null;
-  features?: string[] | null;
   badge_text?: string | null;
-  is_active?: boolean | null;
 }
 
-// ── Internal Helpers ────────────────────────────────────────────────────────
+// ── Admin Authentication DTOs ──────────────────────────────────────────────
+
+export interface AdminSummary {
+  id: number;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  studio_name?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface AdminLoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  admin: AdminSummary;
+}
+
+export interface AdminTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+// ── Internal Helpers & Auth State ──────────────────────────────────────────
+
+export function setStoredAuth(data: { access_token: string; admin?: AdminSummary }) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("access_token", data.access_token);
+    if (data.admin) {
+      localStorage.setItem("admin_profile", JSON.stringify(data.admin));
+    }
+  }
+}
+
+export function getStoredAdmin(): AdminSummary | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("admin_profile");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearStoredAuth() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("admin_profile");
+  }
+}
+
+export function getStoredToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("access_token") || "";
+}
 
 function getAuthToken(): string {
-  return (
-    localStorage.getItem("access_token") ||
-    (import.meta as any).env?.VITE_API_TOKEN ||
-    (typeof window !== "undefined" && (window as any).env?.VITE_API_TOKEN) ||
-    ""
-  );
+  return getStoredToken();
 }
 
 function getAuthHeaders(): HeadersInit {
@@ -221,17 +268,94 @@ function getAuthHeaders(): HeadersInit {
 
 import { apiMonitorStore } from "./apiMonitorService";
 
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function fetchWithAuth(input: string, init?: RequestInit): Promise<Response> {
+  const token = getAuthToken();
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Content-Type") && !(init?.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  headers.set("ngrok-skip-browser-warning", "true");
+
+  const options: RequestInit = {
+    ...init,
+    credentials: "include",
+    headers,
+  };
+
+  let response = await fetch(input, options);
+
+  // If unauthorized (401) and not already calling an auth endpoint, attempt silent refresh
+  if (response.status === 401 && !input.includes("/api/v1/admin/auth/")) {
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        try {
+          const res = await fetch(`${BASE_URL}/api/v1/admin/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Refresh failed");
+          const data = await res.json();
+          if (data.access_token) {
+            setStoredAuth({ access_token: data.access_token });
+            return data.access_token as string;
+          }
+          return null;
+        } catch {
+          clearStoredAuth();
+          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
+          return null;
+        } finally {
+          refreshPromise = null;
+        }
+      })();
+    }
+
+    const newToken = await refreshPromise;
+    if (newToken) {
+      const retryHeaders = new Headers(options.headers);
+      retryHeaders.set("Authorization", `Bearer ${newToken}`);
+      response = await fetch(input, { ...options, headers: retryHeaders });
+    }
+  }
+
+  return response;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const errorText = await response.text();
+    let parsedMessage = errorText || response.statusText;
+    try {
+      const parsed = JSON.parse(errorText);
+      if (typeof parsed.detail === "string") {
+        parsedMessage = parsed.detail;
+      } else if (Array.isArray(parsed.detail)) {
+        parsedMessage = parsed.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+      } else if (parsed.message) {
+        parsedMessage = parsed.message;
+      }
+    } catch {
+      // Use raw errorText
+    }
     apiMonitorStore.addLog({
       url: response.url,
       method: "API",
       status: response.status,
       ok: false,
-      data: { error: errorText || response.statusText },
+      data: { error: parsedMessage },
     });
-    throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+    throw new Error(parsedMessage);
   }
   const data = await response.json();
   apiMonitorStore.addLog({
@@ -337,7 +461,7 @@ function transformComment(raw: any): ApiComment {
     videoId: raw.video_id ?? raw.videoId ?? 0,
     videoTitle: raw.video_title || raw.videoTitle || "",
     likes: raw.likes ?? 0,
-    isLiked: raw.is_liked ?? raw.isLiked ?? false,
+    isLiked: raw.is_hearted_by_creator ?? raw.is_liked ?? raw.isLiked ?? false,
     replyCount: raw.reply_count ?? raw.replyCount ?? 0,
     createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
   };
@@ -354,7 +478,7 @@ function transformReply(raw: any): ApiReply {
     userAvatar: author.avatar_url || author.avatarUrl || raw.user_avatar || raw.userAvatar,
     isCreator: author.is_creator ?? author.isCreator ?? raw.is_creator ?? false,
     likes: raw.likes_count ?? raw.likesCount ?? raw.likes ?? 0,
-    isLiked: raw.is_liked ?? raw.isLiked ?? false,
+    isLiked: raw.is_hearted_by_creator ?? raw.is_liked ?? raw.isLiked ?? false,
     replyCount: raw.reply_count ?? raw.replyCount ?? raw.replies_count ?? 0,
     createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
   };
@@ -1490,13 +1614,65 @@ export async function reorderCategories(ids: number[]): Promise<{ message: strin
   return handleResponse(res);
 }
 
+// ── Admin Authentication API Endpoints ─────────────────────────────────────
+
+export async function adminLogin(payload: { email: string; password: string }): Promise<AdminLoginResponse> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+    },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  const data = await handleResponse<AdminLoginResponse>(res);
+  setStoredAuth({ access_token: data.access_token, admin: data.admin });
+  return data;
+}
+
+export async function adminRefresh(): Promise<AdminTokenResponse> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/auth/refresh`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+    },
+    credentials: "include",
+  });
+  const data = await handleResponse<AdminTokenResponse>(res);
+  if (data?.access_token) {
+    setStoredAuth({ access_token: data.access_token });
+  }
+  return data;
+}
+
+export async function adminGetMe(): Promise<AdminSummary> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/auth/me`);
+  const data = await handleResponse<AdminSummary>(res);
+  if (data) {
+    localStorage.setItem("admin_profile", JSON.stringify(data));
+  }
+  return data;
+}
+
+export async function adminLogout(): Promise<void> {
+  try {
+    await fetchWithAuth(`${BASE_URL}/api/v1/admin/auth/logout`, {
+      method: "POST",
+    });
+  } catch (err) {
+    console.warn("Logout request failed", err);
+  } finally {
+    clearStoredAuth();
+  }
+}
+
 // ── Subscription Plans API Endpoints ────────────────────────────────────────
 
 export async function getSubscriptionPlans(): Promise<ApiSubscriptionPlan[]> {
   try {
-    const res = await fetch(`${BASE_URL}/api/v1/admin/plans`, {
-      headers: getAuthHeaders(),
-    });
+    const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/plans`);
     const json = await handleResponse<any>(res);
     return Array.isArray(json) ? json : json.data || json.items || [];
   } catch (err) {
@@ -1505,31 +1681,29 @@ export async function getSubscriptionPlans(): Promise<ApiSubscriptionPlan[]> {
   }
 }
 
-export async function createSubscriptionPlan(data: CreateSubscriptionPlanPayload): Promise<ApiSubscriptionPlan> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/plans`, {
-    method: "POST",
-    headers: getAuthHeaders(),
+export async function updateSubscriptionPlan(
+  planId: number,
+  data: UpdateSubscriptionPlanPayload
+): Promise<ApiSubscriptionPlan> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/plans/${planId}`, {
+    method: "PUT",
     body: JSON.stringify(data),
   });
   return handleResponse<ApiSubscriptionPlan>(res);
 }
 
-export async function updateSubscriptionPlan(
-  planId: number,
-  data: UpdateSubscriptionPlanPayload
-): Promise<ApiSubscriptionPlan> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/plans/${planId}`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
+// Deprecated legacy plan endpoints retained as safe stubs for component compatibility
+export async function createSubscriptionPlan(data: CreateSubscriptionPlanPayload): Promise<ApiSubscriptionPlan> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/plans`, {
+    method: "POST",
     body: JSON.stringify(data),
   });
   return handleResponse<ApiSubscriptionPlan>(res);
 }
 
 export async function deleteSubscriptionPlan(planId: number): Promise<{ message: string }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/plans/${planId}`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/plans/${planId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
   });
   return handleResponse(res);
 }
@@ -1537,17 +1711,15 @@ export async function deleteSubscriptionPlan(planId: number): Promise<{ message:
 export async function toggleSubscriptionPlanActive(
   planId: number
 ): Promise<{ id: number; name: string; is_active: boolean; updated_at: string }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/plans/${planId}/toggle-active`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/plans/${planId}/toggle-active`, {
     method: "PATCH",
-    headers: getAuthHeaders(),
   });
   return handleResponse(res);
 }
 
 export async function reorderSubscriptionPlans(ids: number[]): Promise<{ message: string }> {
-  const res = await fetch(`${BASE_URL}/api/v1/admin/plans/reorder`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/plans/reorder`, {
     method: "PUT",
-    headers: getAuthHeaders(),
     body: JSON.stringify({ ids }),
   });
   return handleResponse(res);
@@ -1710,8 +1882,8 @@ export async function getDashboardSubscriptionBreakdown(params?: {
     tiers: (json.tiers || []).map((t: any, idx: number) => ({
       planId: t.plan_id,
       name: t.name,
-      badgeText: t.badge_text,
-      isActive: t.is_active,
+      badgeText: t.badge_text ?? null,
+      isActive: t.is_active ?? true,
       subscribers: t.subscribers ?? 0,
       subscribersPercentage: t.subscribers_percentage ?? 0,
       revenue: t.revenue ?? 0,

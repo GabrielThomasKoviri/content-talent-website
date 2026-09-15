@@ -17,7 +17,17 @@ import {
 } from "./ui/dialog";
 import { useState, useEffect } from "react";
 import ApiResponseMonitor from "./ApiResponseMonitor";
-import { getCreatorProfile, updateCreatorProfile, getDashboardStats } from "../services/apiService";
+import {
+  getCreatorProfile,
+  updateCreatorProfile,
+  getDashboardStats,
+  adminGetMe,
+  adminRefresh,
+  adminLogout,
+  getStoredAdmin,
+  getStoredToken,
+  clearStoredAuth,
+} from "../services/apiService";
 
 const navigation = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -123,7 +133,7 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
               </div>
               <div>
                 <p className="font-semibold text-slate-100">{name || "Creator"}</p>
-                <p className="text-sm text-slate-400">{email || "admin@talentsea.io"}</p>
+                <p className="text-sm text-slate-400">{email}</p>
               </div>
             </div>
 
@@ -187,25 +197,93 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<{ name: string; email: string; avatarUrl: string }>({
-    name: "Creator Studio",
-    email: "admin@talentsea.io",
-    avatarUrl: "",
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [profile, setProfile] = useState<{ name: string; email: string; avatarUrl: string }>(() => {
+    const stored = getStoredAdmin();
+    return {
+      name: stored ? `${stored.first_name || ""} ${stored.last_name || ""}`.trim() || stored.studio_name || stored.email || "" : "",
+      email: stored?.email || "",
+      avatarUrl: stored?.avatar_url || "",
+    };
   });
 
+  // Rehydrate creator identity & verify active authentication session
   useEffect(() => {
-    getCreatorProfile()
-      .then((p) => {
-        if (p) {
+    let isMounted = true;
+
+    const verifySession = async () => {
+      const storedToken = getStoredToken();
+      if (!storedToken) {
+        // No access token in storage: check if HttpOnly refresh cookie is present
+        try {
+          const refreshRes = await adminRefresh();
+          if (!refreshRes?.access_token) {
+            throw new Error("No token returned");
+          }
+          const admin = await adminGetMe();
+          if (!isMounted) return;
+          if (admin) {
+            setProfile({
+              name: `${admin.first_name || ""} ${admin.last_name || ""}`.trim() || admin.studio_name || admin.email || "Admin",
+              email: admin.email || "",
+              avatarUrl: admin.avatar_url || "",
+            });
+          }
+          setIsCheckingAuth(false);
+          return;
+        } catch {
+          if (!isMounted) return;
+          clearStoredAuth();
+          navigate("/login", { replace: true, state: { from: location.pathname } });
+          return;
+        }
+      }
+
+      // Stored token exists: verify it via adminGetMe()
+      try {
+        const admin = await adminGetMe();
+        if (!isMounted) return;
+        if (admin) {
           setProfile({
-            name: p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim() || "Creator Studio",
-            email: p.email || "admin@talentsea.io",
-            avatarUrl: p.avatarUrl || "",
+            name: `${admin.first_name || ""} ${admin.last_name || ""}`.trim() || admin.studio_name || admin.email || "Admin",
+            email: admin.email || "",
+            avatarUrl: admin.avatar_url || "",
           });
         }
-      })
-      .catch(() => {});
-  }, [profileOpen]);
+        setIsCheckingAuth(false);
+      } catch {
+        // Token may have expired, attempt refresh
+        try {
+          await adminRefresh();
+          const admin = await adminGetMe();
+          if (!isMounted) return;
+          if (admin) {
+            setProfile({
+              name: `${admin.first_name || ""} ${admin.last_name || ""}`.trim() || admin.studio_name || admin.email || "Admin",
+              email: admin.email || "",
+              avatarUrl: admin.avatar_url || "",
+            });
+          }
+          setIsCheckingAuth(false);
+        } catch {
+          if (!isMounted) return;
+          clearStoredAuth();
+          navigate("/login", { replace: true, state: { from: location.pathname } });
+        }
+      }
+    };
+
+    verifySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, location.pathname]);
+
+  const handleLogout = async () => {
+    await adminLogout();
+    navigate("/login", { replace: true });
+  };
 
   const NavLinks = ({ onLinkClick }: { onLinkClick?: () => void }) => (
     <nav className="space-y-1.5 p-4">
@@ -231,6 +309,22 @@ export default function AdminLayout() {
       })}
     </nav>
   );
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0b0f19] text-slate-100">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <span className="font-bold text-white text-xl">T</span>
+          </div>
+          <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
+            <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+            <span>Verifying session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 selection:bg-purple-500/30">
@@ -320,7 +414,7 @@ export default function AdminLayout() {
                   <Settings className="mr-2 h-4 w-4 text-purple-400" />Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-800" />
-                <DropdownMenuItem className="text-red-400 hover:bg-slate-800 focus:bg-slate-800 cursor-pointer" onClick={() => navigate("/login")}>
+                <DropdownMenuItem className="text-red-400 hover:bg-slate-800 focus:bg-slate-800 cursor-pointer" onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

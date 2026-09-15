@@ -1,74 +1,81 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router";
-import { Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, Sparkles, AlertCircle, KeyRound } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router";
+import { Lock, Mail, Eye, EyeOff, ArrowRight, Sparkles, AlertCircle, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { adminLogin, adminGetMe, getStoredToken, clearStoredAuth } from "../services/apiService";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [authStatus, setAuthStatus] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [checkingSession, setCheckingSession] = useState(() => !!getStoredToken());
 
-  // Passive API Integration Handler
-  // API Specification from API_DOCUMENTATION.md:
-  // POST api/v1/auth/login
-  // Request body: { "email": string, "password": string }
-  // Response 200: { "accessToken": string, "refreshToken": string, "expiresIn": number, "user": {...} }
+  useEffect(() => {
+    let isMounted = true;
+    const token = getStoredToken();
+    if (!token) {
+      setCheckingSession(false);
+      return;
+    }
+
+    adminGetMe()
+      .then(() => {
+        if (isMounted) {
+          navigate("/", { replace: true });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          clearStoredAuth();
+          setCheckingSession(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
   const handleStandardLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !password) return;
+
     setLoading(true);
-    setAuthStatus(null);
+    setErrorMsg(null);
 
-    /* 
-      PASSIVE API STUB (To be active when backend auth switch is enabled):
-      
-      try {
-        const response = await fetch(`${BASE_URL}/api/v1/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await response.json();
-        if (response.ok && data.accessToken) {
-          localStorage.setItem("access_token", data.accessToken);
-          localStorage.setItem("refresh_token", data.refreshToken);
-          navigate("/");
-        } else {
-          setAuthStatus(data.message || "Invalid credentials");
-        }
-      } catch (err) {
-        setAuthStatus("Failed to connect to authentication server.");
-      }
-    */
-
-    setTimeout(() => {
+    try {
+      await adminLogin({ email: email.trim(), password });
+      const from = (location.state as any)?.from || "/";
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Invalid email or password. Please try again.");
+    } finally {
       setLoading(false);
-      setAuthStatus("Passive Mode Active: Login verification simulated. API integration ready in api/v1/auth/login.");
-    }, 600);
+    }
   };
 
-  // Passive Auth0 SSO Login Handler
-  // As specified: Auth0 login in api_documentation.md
-  const handleAuth0Login = () => {
-    setLoading(true);
-    /* 
-      PASSIVE AUTH0 REDIRECT STUB:
-      
-      const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
-      const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-      const redirectUri = window.location.origin + "/callback";
-      window.location.href = `https://${auth0Domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid profile email`;
-    */
-    setTimeout(() => {
-      setLoading(false);
-      setAuthStatus("Auth0 SSO Passive State: Auth0 OAuth flow configured. Ready to trigger upon activation.");
-    }, 600);
-  };
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-slate-100">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <span className="font-bold text-white text-xl">T</span>
+          </div>
+          <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
+            <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+            <span>Checking session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 relative overflow-hidden p-4">
@@ -84,38 +91,19 @@ export default function Login() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium mb-4">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Creator OTT Platform</span>
+            <span>Creator Studio Portal</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Welcome Back</h1>
-          <p className="text-sm text-slate-400">Sign in to manage your videos, playlists & analytics</p>
+          <p className="text-sm text-slate-400">Sign in to manage your OTT platform, videos & revenue</p>
         </div>
 
-        {/* Passive Status Notification Banner */}
-        {authStatus && (
-          <div className="mb-6 p-3.5 rounded-xl bg-purple-950/50 border border-purple-500/30 text-purple-200 text-xs flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-            <div className="flex-1">{authStatus}</div>
+        {/* Error Notification Banner */}
+        {errorMsg && (
+          <div className="mb-6 p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/30 text-rose-200 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1 font-medium">{errorMsg}</div>
           </div>
         )}
-
-        {/* Auth0 SSO Login Button */}
-        <div className="mb-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleAuth0Login}
-            disabled={loading}
-            className="w-full h-11 bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white flex items-center justify-center gap-2.5 transition-all shadow-sm"
-          >
-            <ShieldCheck className="w-4 h-4 text-purple-400" />
-            <span>Continue with Auth0 SSO</span>
-          </Button>
-        </div>
-
-        <div className="relative flex items-center justify-center mb-6">
-          <div className="border-t border-slate-800 w-full" />
-          <span className="bg-slate-900 px-3 text-xs text-slate-500 uppercase font-semibold">Or with email</span>
-        </div>
 
         {/* Credentials Form */}
         <form onSubmit={handleStandardLogin} className="space-y-4">
@@ -132,6 +120,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 h-11 focus:ring-purple-500/40 focus:border-purple-500"
               required
+              autoFocus
             />
           </div>
 
@@ -141,13 +130,6 @@ export default function Login() {
                 <Lock className="w-3.5 h-3.5 text-slate-400" />
                 Password
               </Label>
-              <button
-                type="button"
-                className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                onClick={() => setAuthStatus("Password reset link (POST api/v1/auth/forgot-password) passive.")}
-              >
-                Forgot password?
-              </button>
             </div>
             <div className="relative">
               <Input
@@ -163,6 +145,7 @@ export default function Login() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -189,29 +172,26 @@ export default function Login() {
             {loading ? (
               <span className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Authenticating...
+                Signing in...
               </span>
             ) : (
               <>
-                <span>Sign In</span>
+                <span>Sign In to Studio</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </Button>
         </form>
 
-        {/* Passive Mode Helper Footer */}
+        {/* Footer */}
         <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
           <span className="flex items-center gap-1.5 text-slate-500">
-            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-            Passive Mode
+            <KeyRound className="w-3.5 h-3.5 text-purple-400" />
+            Creator Studio
           </span>
-          <button
-            onClick={() => navigate("/")}
-            className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
-          >
-            Enter Platform →
-          </button>
+          <span className="text-slate-500 font-mono text-[11px]">
+            FastAPI Auth Protected
+          </span>
         </div>
       </div>
     </div>

@@ -4,25 +4,22 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import { Check, Plus, Edit, Trash2, Zap, Tag, Sparkles, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Badge } from "../components/ui/badge";
+import {
+  Check, Edit, Zap, Tag, Sparkles, Loader2, Lock, Users, DollarSign, ShieldCheck,
+} from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "../components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "../components/ui/select";
-import {
   getSubscriptionPlans,
-  createSubscriptionPlan,
   updateSubscriptionPlan,
-  deleteSubscriptionPlan,
-  toggleSubscriptionPlanActive,
-  reorderSubscriptionPlans,
   ApiSubscriptionPlan,
 } from "../services/apiService";
 
-type Plan = {
+export type Plan = {
   id: string;
+  planType: string;
   name: string;
   price: number;
   discount: number;
@@ -41,57 +38,15 @@ const formatRupees = (val: number) => {
   return `₹${formatted}`;
 };
 
-function getMaxPeriodLimit(unit: string): number {
-  const u = (unit || "months").toLowerCase();
-  if (u.startsWith("day")) return 365;
-  if (u.startsWith("year")) return 3;
-  return 24; // months
-}
-
-function parsePeriod(periodStr: string): { count: number; unit: string } {
-  if (!periodStr) return { count: 1, unit: "months" };
-  const trimmed = periodStr.trim().toLowerCase();
-  const match = trimmed.match(/^(\d+)\s*(.*)$/);
-  if (match) {
-    let unit = match[2].trim();
-    if (unit.startsWith("day")) unit = "days";
-    else if (unit.startsWith("year")) unit = "years";
-    else unit = "months";
-
-    const maxLimit = getMaxPeriodLimit(unit);
-    const rawCount = parseInt(match[1], 10) || 1;
-    const count = Math.max(1, Math.min(maxLimit, rawCount));
-    return { count, unit };
-  } else {
-    let unit = "months";
-    if (trimmed.includes("day")) unit = "days";
-    else if (trimmed.includes("year")) unit = "years";
-    return { count: 1, unit };
-  }
-}
-
-function formatPeriod(count: number, unit: string): string {
-  const maxLimit = getMaxPeriodLimit(unit);
-  const c = Math.max(1, Math.min(maxLimit, count || 1));
-  const u = (unit || "months").toLowerCase();
-  let base = "month";
-  if (u.startsWith("day")) base = "day";
-  else if (u.startsWith("year")) base = "year";
-  else base = "month";
-
-  if (c === 1) {
-    return base;
-  }
-  return `${c} ${base}s`;
-}
-
 function transformApiPlanToLocalPlan(apiPlan: ApiSubscriptionPlan): Plan {
+  const planType = apiPlan.plan_type || (apiPlan.display_order === 2 ? "no_ads" : "with_ads");
   return {
     id: String(apiPlan.id),
+    planType,
     name: apiPlan.name,
     price: apiPlan.base_price,
     discount: apiPlan.discount_percentage,
-    period: formatPeriod(apiPlan.billing_period_value, apiPlan.billing_period_unit),
+    period: "month",
     badgeText: apiPlan.badge_text || undefined,
     description: apiPlan.description || "",
     subscribers: apiPlan.active_subscribers || 0,
@@ -99,241 +54,143 @@ function transformApiPlanToLocalPlan(apiPlan: ApiSubscriptionPlan): Plan {
     features: Array.isArray(apiPlan.features) ? apiPlan.features : [],
     active: apiPlan.is_active,
     popular: Boolean(
-      apiPlan.badge_text &&
-        (apiPlan.badge_text.toLowerCase().includes("popular") || apiPlan.badge_text.toLowerCase().includes("best"))
+      planType === "no_ads" ||
+        (apiPlan.badge_text &&
+          (apiPlan.badge_text.toLowerCase().includes("popular") ||
+            apiPlan.badge_text.toLowerCase().includes("best") ||
+            apiPlan.badge_text.toLowerCase().includes("deal")))
     ),
   };
 }
 
-function ActiveToggleButton({
-  active,
-  onToggle,
-  id,
+function EditPlanDialog({
+  open,
+  onClose,
+  onSave,
+  plan,
 }: {
-  active: boolean;
-  onToggle: (newActive: boolean) => void;
-  id?: string;
-}) {
-  return (
-    <button
-      type="button"
-      id={id}
-      role="switch"
-      aria-checked={active}
-      onClick={() => onToggle(!active)}
-      className={`relative inline-flex h-8 w-16 items-center rounded-full p-1 transition-all duration-300 ease-in-out cursor-pointer shadow-inner ${
-        active
-          ? "bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-500 shadow-lg shadow-emerald-500/20"
-          : "bg-slate-700/90 border border-slate-600/80"
-      }`}
-    >
-      <span
-        className={`inline-block h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out ${
-          active ? "translate-x-8" : "translate-x-0"
-        }`}
-      />
-    </button>
-  );
-}
-
-function PlanDialog({ open, onClose, onSave, plan }: {
   open: boolean;
   onClose: () => void;
   onSave: (plan: Plan) => void;
   plan?: Plan | null;
 }) {
-  const isEdit = !!plan;
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [discount, setDiscount] = useState("");
-  const [periodCount, setPeriodCount] = useState("1");
-  const [periodUnit, setPeriodUnit] = useState("months");
   const [badgeText, setBadgeText] = useState("");
   const [description, setDescription] = useState("");
-  const [features, setFeatures] = useState("");
-  const [active, setActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (plan) {
       setName(plan.name);
       setPrice(String(plan.price));
-      setDiscount(plan.discount ? String(plan.discount) : "");
-      const parsed = parsePeriod(plan.period);
-      setPeriodCount(String(parsed.count));
-      setPeriodUnit(parsed.unit);
+      setDiscount(plan.discount > 0 ? String(plan.discount) : "");
       setBadgeText(plan.badgeText || "");
-      setDescription(plan.description);
-      setFeatures(plan.features.join("\n"));
-      setActive(plan.active);
-    } else {
-      setName("");
-      setPrice("");
-      setDiscount("");
-      setPeriodCount("1");
-      setPeriodUnit("months");
-      setBadgeText("");
-      setDescription("");
-      setFeatures("");
-      setActive(true);
+      setDescription(plan.description || "");
+      setError(null);
     }
   }, [plan, open]);
 
+  if (!plan) return null;
+
   const numPrice = parseFloat(price) || 0;
-  const numDiscount = Math.max(0, Math.min(100, parseFloat(discount) || 0));
+  const numDiscount = Math.min(100, Math.max(0, parseFloat(discount) || 0));
   const finalPrice = numDiscount > 0 ? numPrice - (numPrice * numDiscount) / 100 : numPrice;
-  const maxLimit = getMaxPeriodLimit(periodUnit);
-  const numPeriodCount = Math.max(1, Math.min(maxLimit, parseInt(periodCount) || 1));
-  const computedPeriod = formatPeriod(numPeriodCount, periodUnit);
-
-  const handleDiscountChange = (val: string) => {
-    if (val === "") {
-      setDiscount("");
-      return;
-    }
-    const num = parseFloat(val);
-    if (isNaN(num)) {
-      setDiscount("");
-      return;
-    }
-    if (num > 100) {
-      setDiscount("100");
-    } else if (num < 0) {
-      setDiscount("0");
-    } else {
-      setDiscount(val);
-    }
-  };
-
-  const handleUnitChange = (newUnit: string) => {
-    setPeriodUnit(newUnit);
-    const limit = getMaxPeriodLimit(newUnit);
-    const current = parseInt(periodCount) || 1;
-    if (current > limit) {
-      setPeriodCount(String(limit));
-    }
-  };
-
-  const handlePeriodCountChange = (val: string) => {
-    if (val === "") {
-      setPeriodCount("");
-      return;
-    }
-    const num = parseInt(val, 10);
-    if (isNaN(num)) {
-      setPeriodCount("1");
-      return;
-    }
-    const limit = getMaxPeriodLimit(periodUnit);
-    if (num > limit) {
-      setPeriodCount(String(limit));
-    } else if (num < 1) {
-      setPeriodCount("1");
-    } else {
-      setPeriodCount(String(num));
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError("Plan name is required");
+      return;
+    }
 
     setSubmitting(true);
-    const parsedCount = parseInt(periodCount, 10) || 1;
-    const computedPeriodStr = formatPeriod(parsedCount, periodUnit);
+    setError(null);
 
     const payload = {
       name: name.trim(),
+      description: description.trim() || null,
       base_price: numPrice,
       discount_percentage: numDiscount,
-      billing_period_value: parsedCount,
-      billing_period_unit: periodUnit,
-      description: description.trim() || null,
-      features: features.split("\n").map((f) => f.trim()).filter(Boolean),
       badge_text: badgeText.trim() || null,
-      is_active: active,
     };
 
     try {
-      if (isEdit && plan) {
-        const numericId = parseInt(plan.id, 10);
-        if (!isNaN(numericId)) {
-          const res = await updateSubscriptionPlan(numericId, payload);
-          onSave(transformApiPlanToLocalPlan(res));
-        } else {
-          onSave({
-            id: plan.id,
-            name: name.trim(),
-            price: numPrice,
-            discount: numDiscount,
-            period: computedPeriodStr,
-            badgeText: badgeText.trim(),
-            description: description.trim(),
-            subscribers: plan.subscribers,
-            revenue: plan.revenue,
-            features: features.split("\n").map((f) => f.trim()).filter(Boolean),
-            active: active,
-          });
-        }
-      } else {
-        const res = await createSubscriptionPlan(payload);
-        onSave(transformApiPlanToLocalPlan(res));
-      }
-    } catch (err) {
-      console.warn("[PlanDialog] Saving plan to API failed, fallback to local update", err);
-      const updated: Plan = {
-        id: plan?.id || String(Date.now()),
-        name: name.trim(),
-        price: numPrice,
-        discount: numDiscount,
-        period: computedPeriodStr,
-        badgeText: badgeText.trim(),
-        description: description.trim(),
-        subscribers: plan?.subscribers ?? 0,
-        revenue: plan?.revenue ?? "₹0",
-        features: features.split("\n").map((f) => f.trim()).filter(Boolean),
-        active: active,
-        popular: plan?.popular,
-      };
-      onSave(updated);
+      const numericId = parseInt(plan.id, 10);
+      const res = await updateSubscriptionPlan(numericId, payload);
+      onSave(transformApiPlanToLocalPlan(res));
+      onClose();
+    } catch (err: any) {
+      console.error("[SubscriptionPlans] Update failed:", err);
+      setError(err?.message || "Failed to update subscription plan pricing.");
     } finally {
       setSubmitting(false);
-      onClose();
     }
   };
 
+  const isNoAds = plan.planType === "no_ads";
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-hidden">
+      <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-6 overflow-hidden bg-slate-900 border border-slate-800 text-slate-100">
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <DialogHeader>
-            <DialogTitle>{isEdit ? `Edit "${plan!.name}" Plan` : "Create New Subscription Plan"}</DialogTitle>
-            <DialogDescription>
-              {isEdit ? "Update the plan details below" : "Set up a new pricing tier for your subscribers"}
+            <div className="flex items-center gap-2 mb-1">
+              <Badge
+                variant="outline"
+                className={
+                  isNoAds
+                    ? "border-purple-500/50 bg-purple-500/10 text-purple-300 font-mono text-[10px]"
+                    : "border-blue-500/50 bg-blue-500/10 text-blue-300 font-mono text-[10px]"
+                }
+              >
+                {isNoAds ? "TIER 2: PREMIUM AD-FREE" : "TIER 1: STANDARD WITH ADS"}
+              </Badge>
+            </div>
+            <DialogTitle className="text-xl font-bold text-white">
+              Edit "{plan.name}" Pricing & Copy
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-sm">
+              Configure creator-facing plan name, tagline, base price, discount %, and marketing highlight badge.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 my-4 overflow-y-auto max-h-[60vh] pr-2">
+
+          {error && (
+            <div className="mt-3 p-3 rounded-lg bg-rose-950/50 border border-rose-500/30 text-rose-200 text-xs">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-4 my-4 overflow-y-auto max-h-[55vh] pr-2">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="plan-name">Plan Name</Label>
+                <Label htmlFor="plan-name" className="text-xs font-semibold text-slate-300">
+                  Plan Display Name
+                </Label>
                 <Input
                   id="plan-name"
-                  placeholder="e.g., Premium"
+                  placeholder="e.g. Standard or Premium"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="plan-price">Base Price (₹)</Label>
+                <Label htmlFor="plan-price" className="text-xs font-semibold text-slate-300">
+                  Base Price (₹ INR)
+                </Label>
                 <Input
                   id="plan-price"
-                  placeholder="e.g., 999"
                   type="number"
                   min="0"
                   step="any"
+                  placeholder="e.g. 499"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
+                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
                   required
                 />
               </div>
@@ -341,123 +198,100 @@ function PlanDialog({ open, onClose, onSave, plan }: {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="plan-discount">Discount (%)</Label>
+                <Label htmlFor="plan-discount" className="text-xs font-semibold text-slate-300">
+                  Discount Percentage (%)
+                </Label>
                 <Input
                   id="plan-discount"
-                  placeholder="0"
                   type="number"
                   min="0"
                   max="100"
                   step="any"
+                  placeholder="0"
                   value={discount}
-                  onChange={(e) => handleDiscountChange(e.target.value)}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Max: 100%
-                </p>
               </div>
               <div>
-                <Label>Billing Period</Label>
-                <div className="flex gap-2 mt-1">
-                  <div className="w-1/3">
-                    <Input
-                      id="plan-period-count"
-                      type="number"
-                      min="1"
-                      max={maxLimit}
-                      placeholder="1"
-                      value={periodCount}
-                      onChange={(e) => handlePeriodCountChange(e.target.value)}
-                    />
-                  </div>
-                  <div className="w-2/3">
-                    <Select value={periodUnit} onValueChange={handleUnitChange}>
-                      <SelectTrigger id="plan-period-unit">
-                        <SelectValue placeholder="Select unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="months">Months</SelectItem>
-                        <SelectItem value="years">Years</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Max: {maxLimit} {periodUnit}
-                </p>
+                <Label htmlFor="plan-badge" className="text-xs font-semibold text-slate-300">
+                  Marketing Badge (Optional)
+                </Label>
+                <Input
+                  id="plan-badge"
+                  placeholder="e.g. POPULAR, BEST VALUE, 20% OFF"
+                  value={badgeText}
+                  onChange={(e) => setBadgeText(e.target.value)}
+                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
+                />
               </div>
             </div>
 
-            {/* Custom Badge Text Input */}
-            <div>
-              <Label htmlFor="plan-badge">Badge Text (Optional)</Label>
-              <Input
-                id="plan-badge"
-                placeholder="e.g., Most Popular, Best Value, Limited Time Deal"
-                value={badgeText}
-                onChange={(e) => setBadgeText(e.target.value)}
-              />
-            </div>
-
-            {/* Calculated Price Preview */}
-            <div className="bg-slate-900/70 border border-slate-800 rounded-lg p-3 flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Tag className="h-4 w-4 text-purple-400" /> Calculated Final Price:
+            {/* Calculated Final Price Callout */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5 text-purple-400" />
+                Subscriber Charged Price:
               </span>
               <div className="text-right">
-                <span className="text-lg font-bold text-emerald-400">
-                  {formatRupees(finalPrice)}/{computedPeriod}
+                <span className="text-base font-bold text-emerald-400">
+                  {formatRupees(finalPrice)}/month
                 </span>
                 {numDiscount > 0 && (
-                  <span className="text-xs text-slate-400 block">
-                    Original: {formatRupees(numPrice)} ({numDiscount}% OFF)
+                  <span className="text-[11px] text-slate-500 block">
+                    Base: {formatRupees(numPrice)} ({numDiscount}% discount)
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-2 border-y border-slate-800">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-slate-200 text-sm font-medium">Status:</Label>
-                  <span className={`text-xs font-semibold ${active ? "text-emerald-400" : "text-slate-400"}`}>
-                    {active ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">Toggle visibility for users on your website</p>
-              </div>
-              <ActiveToggleButton active={active} onToggle={setActive} id="plan-active" />
-            </div>
-
             <div>
-              <Label htmlFor="plan-description">Description</Label>
+              <Label htmlFor="plan-description" className="text-xs font-semibold text-slate-300">
+                Plan Tagline / Description
+              </Label>
               <Textarea
                 id="plan-description"
-                placeholder="Brief description of this plan"
+                placeholder="Short benefit highlight shown below the plan title"
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                className="bg-slate-950/80 border-slate-800 text-white mt-1 text-sm"
               />
             </div>
-            <div>
-              <Label htmlFor="plan-features">Features (one per line)</Label>
-              <Textarea
-                id="plan-features"
-                placeholder={"Access to premium content\n4K video quality\nPriority support"}
-                rows={4}
-                value={features}
-                onChange={(e) => setFeatures(e.target.value)}
-              />
+
+            {/* Platform-Governed Features (Read-Only) */}
+            <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  Platform Technical Entitlements
+                </span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
+                  Locked by OTT Engine
+                </span>
+              </div>
+              <div className="space-y-1.5 pt-1">
+                {plan.features.map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs text-slate-400">
+                    <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+
+          <DialogFooter className="pt-2 border-t border-slate-800/80">
+            <Button type="button" variant="outline" onClick={onClose} className="border-slate-700 text-slate-300 hover:bg-slate-800">
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} className="bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2">
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold gap-2 shadow-lg shadow-purple-950/40"
+            >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save Changes" : "Create Plan"}
+              Save Plan Pricing
             </Button>
           </DialogFooter>
         </form>
@@ -469,7 +303,6 @@ function PlanDialog({ open, onClose, onSave, plan }: {
 export default function SubscriptionPlans() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<Plan | null>(null);
 
   const fetchPlans = async () => {
@@ -491,247 +324,178 @@ export default function SubscriptionPlans() {
   }, []);
 
   const handleSavePlan = (savedPlan: Plan) => {
-    setPlans((prev) => {
-      const exists = prev.some((p) => p.id === savedPlan.id);
-      if (exists) {
-        return prev.map((p) => (p.id === savedPlan.id ? savedPlan : p));
-      }
-      return [...prev, savedPlan];
-    });
-  };
-
-  const handleDeletePlan = async (id: string) => {
-    const numericId = parseInt(id, 10);
-    if (!isNaN(numericId)) {
-      try {
-        await deleteSubscriptionPlan(numericId);
-      } catch (err) {
-        console.warn("[SubscriptionPlans] Failed to delete plan from API", err);
-      }
-    }
-    setPlans((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const handleToggleActive = async (id: string, active: boolean) => {
-    setPlans((prev) => prev.map((p) => (p.id === id ? { ...p, active } : p)));
-
-    const numericId = parseInt(id, 10);
-    if (!isNaN(numericId)) {
-      try {
-        await toggleSubscriptionPlanActive(numericId);
-      } catch (err) {
-        console.warn("[SubscriptionPlans] Failed to toggle active status on API", err);
-      }
-    }
-  };
-
-  const handleMovePlan = async (index: number, direction: "prev" | "next") => {
-    const targetIndex = direction === "prev" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= plans.length) return;
-
-    const newPlans = [...plans];
-    const [moved] = newPlans.splice(index, 1);
-    newPlans.splice(targetIndex, 0, moved);
-    setPlans(newPlans);
-
-    const ids = newPlans.map((p) => parseInt(p.id, 10)).filter((id) => !isNaN(id));
-    if (ids.length > 0) {
-      try {
-        await reorderSubscriptionPlans(ids);
-      } catch (err) {
-        console.warn("[SubscriptionPlans] Failed to persist plan reordering", err);
-      }
-    }
+    setPlans((prev) => prev.map((p) => (p.id === savedPlan.id ? savedPlan : p)));
   };
 
   return (
-    <div className="space-y-6">
-      {/* Controlled dialogs at top level */}
-      <PlanDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSave={handleSavePlan}
-      />
-      <PlanDialog
+    <div className="space-y-8">
+      <EditPlanDialog
         open={!!editPlan}
         onClose={() => setEditPlan(null)}
         onSave={handleSavePlan}
         plan={editPlan}
       />
 
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white">Subscription Plans</h1>
-          <p className="text-slate-300 mt-1 font-medium">Create and manage your subscription tiers</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-extrabold tracking-tight text-white">Subscription Plans</h1>
+            <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-full font-mono font-medium flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+              TWO-TIER OTT ENGINE
+            </span>
+          </div>
+          <p className="text-slate-400 mt-1.5 text-sm max-w-2xl">
+            Configure pricing, discounts, and promotional badges for your Standard (With Ads) and Premium (Ad-Free) tiers. Technical entitlements and DRM policies are platform-governed.
+          </p>
         </div>
-        <Button
-          className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-lg shadow-purple-600/20"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus className="h-4 w-4" />Create Plan
-        </Button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
           <Loader2 className="h-8 w-8 text-purple-400 animate-spin" />
+          <p className="text-sm font-medium">Synchronizing subscription tiers...</p>
         </div>
       ) : plans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 border border-dashed border-slate-800 rounded-xl bg-slate-900/40 text-center p-8">
+        <div className="flex flex-col items-center justify-center py-16 border border-dashed border-slate-800 rounded-2xl bg-slate-900/40 text-center p-8">
           <Sparkles className="h-10 w-10 text-purple-400 mb-3" />
-          <h3 className="text-lg font-bold text-white">No Subscription Plans Found</h3>
+          <h3 className="text-lg font-bold text-white">Initializing Two-Tier OTT Engine</h3>
           <p className="text-sm text-slate-400 mt-1 max-w-sm">
-            Create your first subscription tier to start offering plans to your subscribers.
+            Contact platform administration if your studio's standard tiers are not automatically initialized.
           </p>
-          <Button
-            className="mt-4 gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Create First Plan
-          </Button>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-        {plans.map((plan, index) => {
-          const basePrice = plan.price;
-          const discountVal = plan.discount || 0;
-          const hasDiscount = discountVal > 0;
-          const finalPrice = hasDiscount ? basePrice - (basePrice * discountVal) / 100 : basePrice;
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {plans.map((plan) => {
+            const isNoAds = plan.planType === "no_ads";
+            const basePrice = plan.price;
+            const discountVal = plan.discount || 0;
+            const hasDiscount = discountVal > 0;
+            const finalPrice = hasDiscount ? basePrice - (basePrice * discountVal) / 100 : basePrice;
 
-          return (
-            <Card
-              key={plan.id}
-              className={
-                plan.popular
-                  ? "border-purple-500 border-2 shadow-[0_0_20px_rgba(168,85,247,0.2)] flex flex-col justify-between"
-                  : "border-slate-800 flex flex-col justify-between"
-              }
-            >
-              <CardHeader className="border-b border-slate-800/80">
-                <div className="flex items-start justify-between">
+            return (
+              <Card
+                key={plan.id}
+                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl transition-all duration-200 backdrop-blur-sm ${
+                  isNoAds
+                    ? "bg-gradient-to-b from-purple-950/30 via-slate-900/80 to-slate-900 border-2 border-purple-500/50 shadow-2xl shadow-purple-950/40"
+                    : "bg-gradient-to-b from-slate-900/90 via-slate-900/60 to-slate-900 border border-slate-800 shadow-xl"
+                }`}
+              >
+                {/* Top Ambient Glow for Premium */}
+                {isNoAds && (
+                  <div className="absolute -top-16 -right-16 w-36 h-36 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
+                )}
+
+                <CardHeader className="border-b border-slate-800/80 pb-6 relative z-10">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        isNoAds
+                          ? "border-purple-500/60 bg-purple-500/20 text-purple-200 font-mono text-[10px] tracking-wider uppercase"
+                          : "border-blue-500/60 bg-blue-500/20 text-blue-200 font-mono text-[10px] tracking-wider uppercase"
+                      }
+                    >
+                      {isNoAds ? "Tier 2 • Ad-Free" : "Tier 1 • With Ads"}
+                    </Badge>
+
+                    {plan.badgeText && (
+                      <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
+                        <Zap className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        {plan.badgeText}
+                      </span>
+                    )}
+                  </div>
+
                   <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-xl font-bold text-white">{plan.name}</CardTitle>
-                      {plan.popular && <Zap className="h-4 w-4 text-purple-400 fill-purple-400" />}
-                    </div>
-                    <p className="text-sm text-slate-300 mt-1 font-medium">{plan.description}</p>
+                    <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                      {plan.name}
+                    </CardTitle>
+                    <p className="text-sm text-slate-400 mt-1 min-h-[38px] line-clamp-2">
+                      {plan.description || (isNoAds ? "Unlimited ad-free OTT streaming in Full HD" : "Full access to entire video library with occasional short ads")}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-0.5">
-                    {index > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Move Left"
-                        onClick={() => handleMovePlan(index, "prev")}
-                        className="text-slate-400 hover:text-white hover:bg-slate-800 h-8 w-8"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {index < plans.length - 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Move Right"
-                        onClick={() => handleMovePlan(index, "next")}
-                        className="text-slate-400 hover:text-white hover:bg-slate-800 h-8 w-8"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Edit Plan"
-                      onClick={() => setEditPlan(plan)}
-                      className="text-slate-300 hover:text-white hover:bg-slate-800 h-8 w-8"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Delete Plan"
-                      onClick={() => handleDeletePlan(plan.id)}
-                      className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-3xl lg:text-4xl font-bold text-white">
+
+                  <div className="mt-5 pt-4 border-t border-slate-800/60 flex items-baseline gap-2.5 flex-wrap">
+                    <span className="text-4xl font-extrabold text-white tracking-tight">
                       {formatRupees(finalPrice)}
                     </span>
                     {hasDiscount && (
-                      <span className="text-lg font-medium text-slate-400 line-through">
+                      <span className="text-lg font-medium text-slate-500 line-through">
                         {formatRupees(basePrice)}
                       </span>
                     )}
-                    <span className="text-slate-400 text-sm font-medium">/{plan.period}</span>
+                    <span className="text-slate-400 text-sm font-medium">/month</span>
                     {hasDiscount && (
-                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2 py-0.5 rounded-full font-semibold">
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2 py-0.5 rounded-full font-bold">
                         {discountVal}% OFF
                       </span>
                     )}
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6 flex flex-col justify-between flex-1">
-                <div>
-                  <div className="space-y-4 mb-6">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-300 font-medium">Active Subscribers</span>
-                      <span className="font-semibold text-white">{plan.subscribers.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-300 font-medium">Monthly Revenue</span>
-                      <span className="font-semibold text-emerald-400">{plan.revenue}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3 mb-6">
-                    <div className="font-semibold text-sm text-white">Features:</div>
-                    {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-slate-200 font-normal">{feature}</span>
+                </CardHeader>
+
+                <CardContent className="pt-6 flex flex-col justify-between flex-1 relative z-10 space-y-6">
+                  {/* Live Studio Telemetry Cards */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                        <Users className="h-3.5 w-3.5 text-blue-400" />
+                        Active Members
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Footer section: Badge Text directly above Active/Inactive toggle button */}
-                <div className="pt-4 border-t border-slate-800/80 space-y-3 mt-auto">
-                  {plan.badgeText && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400 font-medium">Badge Tag:</span>
-                      <span className="inline-flex items-center gap-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                        <Sparkles className="h-3 w-3 text-purple-400" />
-                        {plan.badgeText}
-                      </span>
+                      <div className="text-lg font-bold text-white">
+                        {plan.subscribers.toLocaleString()}
+                      </div>
                     </div>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 font-medium">Status:</span>
-                      <span className={`text-xs font-semibold ${plan.active ? "text-emerald-400" : "text-slate-400"}`}>
-                        {plan.active ? "Active" : "Inactive"}
-                      </span>
+                    <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                        <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                        Monthly Revenue
+                      </div>
+                      <div className="text-lg font-bold text-emerald-400">
+                        {plan.revenue}
+                      </div>
                     </div>
-                    <ActiveToggleButton
-                      active={plan.active}
-                      onToggle={(checked) => handleToggleActive(plan.id, checked)}
-                      id={`plan-${plan.id}`}
-                    />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+
+                  {/* Technical Platform Feature Entitlements */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono flex items-center justify-between">
+                      <span>Platform Capabilities</span>
+                      <span className="text-emerald-400 text-[10px] font-normal lowercase">enforced</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {plan.features.map((feature, idx) => (
+                        <div key={idx} className="flex items-start gap-2.5 text-sm">
+                          <Check className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                          <span className="text-slate-300 text-xs font-medium leading-relaxed">
+                            {feature}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Edit Action */}
+                  <div className="pt-4 border-t border-slate-800/80">
+                    <Button
+                      onClick={() => setEditPlan(plan)}
+                      className={`w-full h-11 font-semibold gap-2 rounded-xl transition-all shadow-md ${
+                        isNoAds
+                          ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/40"
+                          : "bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 hover:text-white"
+                      }`}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Configure Pricing & Copy
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );
