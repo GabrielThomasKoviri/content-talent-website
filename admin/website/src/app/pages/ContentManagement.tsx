@@ -4,7 +4,7 @@ import Hls from "hls.js";
 import * as tus from "tus-js-client";
 import {
   getVideos, getVideoDetails, initiateVideoUpload, updateVideo,
-  deleteVideo, bulkDeleteVideos, publishVideo, scheduleVideo,
+  deleteVideo, bulkDeleteVideos, publishVideo, unpublishVideo, scheduleVideo,
   uploadThumbnail, selectMainThumbnail, getPlaylists, getPlaylistDetails, createPlaylist, updatePlaylist,
   deletePlaylist, addVideosToPlaylist, removeVideoFromPlaylist,
   bulkRemoveVideosFromPlaylist, uploadPlaylistBanner, getPlaylistVideos,
@@ -37,7 +37,7 @@ import {
   Plus, Search, MoreVertical, Eye, Edit, Trash2, Upload,
   Video, FileText, X, Calendar, Clock, ListVideo,
   ChevronDown, ImagePlus, SlidersHorizontal, Play,
-  ArrowLeft, Pencil, CheckSquare, RefreshCw, Loader2, AlertCircle, FolderOpen, CheckCircle,
+  ArrowLeft, Pencil, CheckSquare, RefreshCw, Loader2, AlertCircle, FolderOpen, CheckCircle, Archive,
   GripVertical, ArrowUp, ArrowDown, Download, Subtitles, Maximize2, Minimize2,
   MessageSquare, Send, Heart, CornerDownRight, MessageCircle
 } from "lucide-react";
@@ -51,6 +51,7 @@ type Content = {
   type: string;
   category: string;
   status: string;
+  publishIntent?: string;
   views: string;
   duration: string;
   date: string;
@@ -330,7 +331,15 @@ function AddVideosDialog({ open, onClose, excludeIds, allVideos, playlistId, onA
                     <div className="text-xs font-semibold text-slate-900 truncate">{v.title}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">{v.category} · {v.date}</div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-medium text-slate-700 bg-slate-100 border-slate-200 flex-shrink-0">{v.status}</Badge>
+                  <Badge variant="outline" className={`text-[10px] font-medium flex-shrink-0 ${
+                    (v.status || "").toLowerCase() === "published"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : (v.status || "").toLowerCase() === "scheduled"
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : (v.status || "").toLowerCase() === "processing"
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-slate-100 border-slate-200 text-slate-700"
+                  }`}>{v.status}</Badge>
                 </label>
               ))
             )}
@@ -503,33 +512,38 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
     setSubmitting(true);
     try {
       if (isEdit && content) {
-        // Editing existing content (e.g. Draft or Scheduled video -> Publish)
+        // Editing existing content (e.g. Draft or Scheduled video -> Publish or Unpublish)
         await updateVideo(content.id, {
           title: title.trim(),
           category,
           description,
           tags,
-          status,
         });
 
         if (slot0File) await uploadThumbnail(content.id, 0, slot0File);
         if (slot1File) await uploadThumbnail(content.id, 1, slot1File);
         if (slot2File) await uploadThumbnail(content.id, 2, slot2File);
 
-        if (status === "published") {
+        const currentStatus = (content.status || "").toLowerCase();
+        if (status === "published" && currentStatus !== "published") {
           await publishVideo(content.id);
+        } else if (status === "draft" && currentStatus === "published") {
+          await unpublishVideo(content.id);
         } else if (status === "scheduled" && scheduleDate && scheduleTime) {
           await scheduleVideo(content.id, { date: scheduleDate, time: scheduleTime });
         }
       } else {
-        // Creating NEW video upload
+        // Creating NEW video upload with upfront publish_intent
+        const publishIntent = status === "published" ? "publish" : status === "scheduled" ? "schedule" : "draft";
         const initRes = await initiateVideoUpload({
           title: title.trim(),
           filename: videoFile ? videoFile.name : "video.mp4",
           category,
           description,
           tags,
-          status: status === "published" ? "pending" : status,
+          publish_intent: publishIntent,
+          scheduled_date: status === "scheduled" ? scheduleDate : undefined,
+          scheduled_time: status === "scheduled" ? scheduleTime : undefined,
         });
 
         if (initRes.id) {
@@ -887,13 +901,32 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                 <Button variant="outline" onClick={onClose} disabled={submitting} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">
                   Cancel
                 </Button>
+                {(content?.status === "Published" || content?.status === "published") ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSave("draft")}
+                    disabled={submitting}
+                    className="border-slate-200 text-amber-700 hover:bg-amber-50 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Unpublish (Draft)
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSave("published")}
+                    disabled={submitting}
+                    className="border-slate-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Publish Now
+                  </Button>
+                )}
                 <Button
                   className="bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs px-5 shadow-xs cursor-pointer"
                   onClick={() => handleSave(content?.status || "published")}
                   disabled={submitting}
                 >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                  Save
+                  Save Changes
                 </Button>
               </>
             ) : (
@@ -2484,7 +2517,15 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
               </div>
             </div>
             <div className="absolute top-3 left-3">
-              <Badge variant="outline" className={content.status === "Published" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : content.status === "Draft" ? "bg-slate-100 text-slate-700 border-slate-200" : "bg-amber-50 text-amber-700 border-amber-200"}>{content.status}</Badge>
+              <Badge variant="outline" className={`text-xs font-semibold ${
+                (content.status || "").toLowerCase() === "published"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : (content.status || "").toLowerCase() === "scheduled"
+                    ? "bg-blue-50 border-blue-200 text-blue-700"
+                    : (content.status || "").toLowerCase() === "processing"
+                      ? "bg-amber-50 border-amber-200 text-amber-700"
+                      : "bg-slate-100 border-slate-200 text-slate-700"
+              }`}>{content.status}</Badge>
             </div>
             <div className="absolute bottom-3 right-3 bg-black/80 text-white text-xs px-2 py-0.5 rounded font-mono font-medium">{content.duration}</div>
           </div>
@@ -2996,12 +3037,15 @@ function PlaylistDetailScreen({
                     <div className="flex items-center gap-2 pt-1">
                       <Badge
                         variant="outline"
-                        className={`text-[10px] font-mono ${v.status === "Published" || v.status === "published"
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                          : v.status === "Draft" || v.status === "draft"
-                            ? "bg-slate-100 border-slate-200 text-slate-700"
-                            : "bg-amber-50 border-amber-200 text-amber-700"
-                          }`}
+                        className={`text-[10px] font-mono ${
+                          (v.status || "").toLowerCase() === "published"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                            : (v.status || "").toLowerCase() === "scheduled"
+                              ? "bg-blue-50 border-blue-200 text-blue-700"
+                              : (v.status || "").toLowerCase() === "processing"
+                                ? "bg-amber-50 border-amber-200 text-amber-700"
+                                : "bg-slate-100 border-slate-200 text-slate-700"
+                        }`}
                       >
                         {v.status}
                       </Badge>
@@ -3364,6 +3408,7 @@ export default function ContentManagement() {
                         <SelectItem value="Published">Published</SelectItem>
                         <SelectItem value="Draft">Draft</SelectItem>
                         <SelectItem value="Scheduled">Scheduled</SelectItem>
+                        <SelectItem value="Processing">Processing</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -3486,13 +3531,16 @@ export default function ContentManagement() {
                         </TableCell>
                         <TableCell className="text-slate-600 text-xs">{content.category}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-xs font-semibold ${content.status === "Published" || content.status === "published"
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : content.status === "Draft" || content.status === "draft"
-                              ? "bg-slate-100 border-slate-200 text-slate-700"
-                              : "bg-amber-50 border-amber-200 text-amber-700"
-                            }`}>
-                            {content.status} {content.encodeProgress !== undefined ? `(${content.encodeProgress}%)` : ""}
+                          <Badge variant="outline" className={`text-xs font-semibold ${
+                            content.status === "Published" || content.status === "published"
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                              : content.status === "Scheduled" || content.status === "scheduled"
+                                ? "bg-blue-50 border-blue-200 text-blue-700"
+                                : content.status === "Processing" || content.status === "processing"
+                                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                                  : "bg-slate-100 border-slate-200 text-slate-700"
+                          }`}>
+                            {content.status} {content.encodeProgress !== undefined && content.encodeProgress > 0 && content.encodeProgress < 100 ? `(${content.encodeProgress}%)` : ""}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-slate-700 font-medium text-xs">{content.views}</TableCell>
@@ -3517,7 +3565,14 @@ export default function ContentManagement() {
                                 <DropdownMenuItem onClick={() => {
                                   publishVideo(content.id).then(() => loadData(true));
                                 }} className="text-xs cursor-pointer text-emerald-700 font-medium">
-                                  <CheckCircle className="mr-2 h-3.5 w-3.5 text-emerald-600" />Publish
+                                  <CheckCircle className="mr-2 h-3.5 w-3.5 text-emerald-600" />Publish Immediately
+                                </DropdownMenuItem>
+                              )}
+                              {(content.status === "Published" || content.status === "published") && (
+                                <DropdownMenuItem onClick={() => {
+                                  unpublishVideo(content.id).then(() => loadData(true));
+                                }} className="text-xs cursor-pointer text-amber-700 font-medium">
+                                  <Archive className="mr-2 h-3.5 w-3.5 text-amber-600" />Unpublish (Draft)
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />

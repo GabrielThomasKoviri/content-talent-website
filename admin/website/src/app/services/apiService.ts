@@ -43,7 +43,8 @@ export interface ApiVideo {
   title: string;
   description?: string;
   category?: string;
-  status: string;
+  status: "processing" | "draft" | "scheduled" | "published" | string;
+  publishIntent?: "draft" | "publish" | "schedule" | string;
   views?: number | string;
   likes?: number;
   duration?: string;
@@ -404,6 +405,7 @@ function transformVideo(raw: any): ApiVideo {
     description: raw.description || "",
     category: raw.category || "Uncategorized",
     status: raw.status ? String(raw.status) : "draft",
+    publishIntent: raw.publish_intent || raw.publishIntent || undefined,
     views: raw.views_count ?? raw.views ?? 0,
     likes: raw.likes_count ?? raw.likes ?? 0,
     duration: raw.duration || "0:00",
@@ -560,6 +562,12 @@ export async function initiateVideoUpload(data: {
   tags?: string[];
   status?: string;
   filename?: string;
+  publish_intent?: "draft" | "publish" | "schedule" | string;
+  publishIntent?: "draft" | "publish" | "schedule" | string;
+  scheduled_date?: string;
+  scheduledDate?: string;
+  scheduled_time?: string;
+  scheduledTime?: string;
 }): Promise<{
   id: number;
   bunnyVideoId?: string;
@@ -568,18 +576,30 @@ export async function initiateVideoUpload(data: {
   signature?: string;
   expirationTime?: number;
   status?: string;
+  publishIntent?: string;
   encodeProgress?: number;
 }> {
+  const intent =
+    data.publish_intent ||
+    data.publishIntent ||
+    (data.status === "published" ? "publish" : data.status === "scheduled" ? "schedule" : "draft");
+  const schedDate = data.scheduled_date || data.scheduledDate;
+  const schedTime = data.scheduled_time || data.scheduledTime;
+
+  const payload: any = {
+    title: data.title,
+    description: data.description,
+    category: data.category,
+    tags: data.tags || [],
+    publish_intent: intent,
+  };
+  if (schedDate) payload.scheduled_date = schedDate;
+  if (schedTime) payload.scheduled_time = schedTime;
+
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/initiate`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({
-      title: data.title,
-      description: data.description,
-      category: data.category,
-      tags: data.tags || [],
-      status: data.status || "draft",
-    }),
+    body: JSON.stringify(payload),
   });
   const json = await handleResponse<any>(res);
   return {
@@ -590,6 +610,7 @@ export async function initiateVideoUpload(data: {
     signature: json.signature,
     expirationTime: json.expiration_time || json.expirationTime,
     status: json.status,
+    publishIntent: json.publish_intent || json.publishIntent,
     encodeProgress: json.encode_progress ?? json.encodeProgress ?? 0,
   };
 }
@@ -642,6 +663,15 @@ export async function bulkDeleteVideos(videoIds: number[]): Promise<{ status?: s
 
 export async function publishVideo(id: number): Promise<ApiVideo> {
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${id}/publish`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  const json = await handleResponse<any>(res);
+  return transformVideo(json);
+}
+
+export async function unpublishVideo(id: number): Promise<ApiVideo> {
+  const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${id}/unpublish`, {
     method: "POST",
     headers: getAuthHeaders(),
   });
