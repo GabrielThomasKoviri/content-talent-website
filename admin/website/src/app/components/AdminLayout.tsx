@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Video, Users, CreditCard, BarChart3, DollarSign,
   MessageSquare, Palette, FolderTree, Settings, Menu, Bell,
   Search, User, LogOut, Camera, Mail, Phone, MapPin, Loader2,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -21,6 +22,7 @@ import {
   getCreatorProfile,
   updateCreatorProfile,
   getDashboardStats,
+  getCreatorBranding,
   adminGetMe,
   adminRefresh,
   adminLogout,
@@ -108,14 +110,14 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-slate-900 border border-slate-800 text-slate-100">
+      <DialogContent className="max-w-lg bg-white border border-slate-200 text-slate-900 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-white">My Profile</DialogTitle>
-          <DialogDescription className="text-slate-400">Manage your personal information and studio profile</DialogDescription>
+          <DialogTitle className="text-slate-900">My Profile</DialogTitle>
+          <DialogDescription className="text-slate-500">Manage your personal information and studio profile</DialogDescription>
         </DialogHeader>
         {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
-            <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
+          <div className="py-12 flex flex-col items-center justify-center text-slate-500 gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
             <p className="text-sm">Loading profile...</p>
           </div>
         ) : (
@@ -124,42 +126,42 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
             <div className="flex items-center gap-4">
               <div className="relative">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={name} className="h-20 w-20 rounded-full object-cover border border-purple-500/40" />
+                  <img src={avatarUrl} alt={name} className="h-20 w-20 rounded-full object-cover border border-slate-200 shadow-xs" />
                 ) : (
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="h-20 w-20 rounded-full bg-slate-900 flex items-center justify-center text-white text-2xl font-bold shadow-xs">
                     {(name || "C").charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
               <div>
-                <p className="font-semibold text-slate-100">{name || "Creator"}</p>
-                <p className="text-sm text-slate-400">{email}</p>
+                <p className="font-semibold text-slate-900">{name || "Creator"}</p>
+                <p className="text-sm text-slate-500">{email}</p>
               </div>
             </div>
 
             {/* Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="flex items-center gap-1.5 mb-1 text-slate-300 text-xs"><User className="h-3.5 w-3.5 text-purple-400" />Display Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100" />
+                <Label className="flex items-center gap-1.5 mb-1 text-slate-700 text-xs"><User className="h-3.5 w-3.5 text-slate-500" />Display Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div>
-                <Label className="flex items-center gap-1.5 mb-1 text-slate-300 text-xs"><Mail className="h-3.5 w-3.5 text-purple-400" />Email</Label>
-                <Input type="email" value={email} disabled className="bg-slate-950/60 border-slate-800 text-slate-400 cursor-not-allowed" />
+                <Label className="flex items-center gap-1.5 mb-1 text-slate-700 text-xs"><Mail className="h-3.5 w-3.5 text-slate-500" />Email</Label>
+                <Input type="email" value={email} disabled className="bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed" />
               </div>
               <div>
-                <Label className="flex items-center gap-1.5 mb-1 text-slate-300 text-xs"><Phone className="h-3.5 w-3.5 text-purple-400" />Phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100" />
+                <Label className="flex items-center gap-1.5 mb-1 text-slate-700 text-xs"><Phone className="h-3.5 w-3.5 text-slate-500" />Phone</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div>
-                <Label className="flex items-center gap-1.5 mb-1 text-slate-300 text-xs"><MapPin className="h-3.5 w-3.5 text-purple-400" />Location</Label>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100" />
+                <Label className="flex items-center gap-1.5 mb-1 text-slate-700 text-xs"><MapPin className="h-3.5 w-3.5 text-slate-500" />Location</Label>
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} />
               </div>
             </div>
             <div>
-              <Label className="mb-1 block text-slate-300 text-xs">Bio</Label>
+              <Label className="mb-1 block text-slate-700 text-xs">Bio</Label>
               <textarea
-                className="w-full border border-slate-800 rounded-lg p-2.5 text-sm text-slate-100 bg-slate-950 resize-none outline-none focus:ring-2 focus:ring-purple-600/20"
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-900 bg-white resize-none outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors shadow-2xs"
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -167,23 +169,23 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3 bg-slate-950 border border-slate-800 rounded-lg p-3 text-center">
+            <div className="grid grid-cols-3 gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
               {[
                 { label: "Videos", value: stats.videos.toLocaleString() },
                 { label: "Subscribers", value: stats.subscribers.toLocaleString() },
                 { label: "Total Views", value: stats.views.toLocaleString() },
               ].map((s) => (
                 <div key={s.label}>
-                  <div className="font-bold text-purple-400">{s.value}</div>
-                  <div className="text-xs text-slate-400">{s.label}</div>
+                  <div className="font-bold text-slate-900 text-base">{s.value}</div>
+                  <div className="text-xs text-slate-500">{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-slate-800 bg-slate-800 text-slate-300 hover:bg-slate-700">Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || loading} className={saved ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving || loading} className={saved ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-slate-900 hover:bg-slate-800 text-white"}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? "Saved!" : "Save Changes"}
           </Button>
         </DialogFooter>
@@ -198,6 +200,50 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Collapsible sidebar state (persisted in localStorage)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Static Creator / Studio Branding State
+  const [branding, setBranding] = useState<{
+    studioName: string;
+    tagline: string;
+    logoUrl: string;
+  }>(() => {
+    try {
+      const raw = localStorage.getItem("admin_profile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          studioName: parsed.studio_name || "TalentSea",
+          tagline: parsed.tagline || "",
+          logoUrl: parsed.avatar_url || "",
+        };
+      }
+    } catch {}
+    return {
+      studioName: "TalentSea",
+      tagline: "",
+      logoUrl: "",
+    };
+  });
+
   const [profile, setProfile] = useState<{ name: string; email: string; avatarUrl: string }>(() => {
     const stored = getStoredAdmin();
     return {
@@ -206,6 +252,36 @@ export default function AdminLayout() {
       avatarUrl: stored?.avatar_url || "",
     };
   });
+
+  // Fetch creator branding & listen for changes
+  useEffect(() => {
+    getCreatorBranding()
+      .then((data) => {
+        if (data) {
+          const name = data.studioName || data.creatorName || "TalentSea";
+          setBranding({
+            studioName: name,
+            tagline: data.tagline || "",
+            logoUrl: data.logoUrl || "",
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch branding for header:", err);
+      });
+
+    const handleBrandingUpdate = (e: any) => {
+      if (e.detail) {
+        setBranding((prev) => ({
+          studioName: e.detail.studioName || e.detail.studio_name || prev.studioName,
+          tagline: e.detail.tagline !== undefined ? e.detail.tagline : prev.tagline,
+          logoUrl: e.detail.logoUrl || e.detail.logo_url || prev.logoUrl,
+        }));
+      }
+    };
+    window.addEventListener("branding_updated", handleBrandingUpdate);
+    return () => window.removeEventListener("branding_updated", handleBrandingUpdate);
+  }, []);
 
   // Rehydrate creator identity & verify active authentication session
   useEffect(() => {
@@ -286,7 +362,7 @@ export default function AdminLayout() {
   };
 
   const NavLinks = ({ onLinkClick }: { onLinkClick?: () => void }) => (
-    <nav className="space-y-1.5 p-4">
+    <nav className={`space-y-1.5 ${isCollapsed ? "p-2" : "p-3"} flex-1 overflow-y-auto`}>
       {navigation.map((item) => {
         const isActive =
           location.pathname === item.path ||
@@ -296,14 +372,19 @@ export default function AdminLayout() {
             key={item.path}
             to={item.path}
             onClick={onLinkClick}
-            className={`flex items-center gap-3.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+            title={item.name}
+            className={`flex items-center rounded-xl text-sm font-semibold transition-all duration-150 ${
+              isCollapsed
+                ? "justify-center p-3"
+                : "gap-3 px-3.5 py-2.5"
+            } ${
               isActive
-                ? "bg-gradient-to-r from-purple-600/30 to-blue-600/20 text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)] font-semibold"
-                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
-            <item.icon className={`h-5 w-5 ${isActive ? "text-purple-400" : "text-slate-400"}`} />
-            {item.name}
+            <item.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
+            {!isCollapsed && <span className="truncate">{item.name}</span>}
           </Link>
         );
       })}
@@ -312,13 +393,13 @@ export default function AdminLayout() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0b0f19] text-slate-100">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-slate-900">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <div className="h-12 w-12 rounded-2xl bg-slate-900 flex items-center justify-center shadow-sm">
             <span className="font-bold text-white text-xl">T</span>
           </div>
-          <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
-            <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+          <div className="flex items-center gap-2.5 text-slate-500 text-sm font-medium">
+            <Loader2 className="h-4 w-4 animate-spin text-slate-900" />
             <span>Verifying session...</span>
           </div>
         </div>
@@ -327,39 +408,158 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 selection:bg-purple-500/30">
+    <div className="min-h-screen bg-[#F8F9FB] text-slate-900 selection:bg-slate-900 selection:text-white">
       <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} />
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-800/80 bg-slate-950/90 backdrop-blur-xl hidden lg:block shadow-2xl">
-        <div className="flex h-16 items-center border-b border-slate-800/80 px-6">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-              <span className="font-bold text-white text-lg">T</span>
+      <aside
+        className={`fixed left-0 top-0 z-40 h-screen border-r border-slate-200 bg-white hidden lg:flex flex-col shadow-2xs transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-20" : "w-64"
+        }`}
+      >
+        <div
+          className={`flex h-16 items-center border-b border-slate-200 ${
+            isCollapsed ? "justify-center px-2" : "justify-between px-4"
+          }`}
+        >
+          {isCollapsed ? (
+            /* Collapsed state: Hover icon shows slider simple and "Open menu" tooltip at the side */
+            <div className="relative group flex items-center justify-center">
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="h-10 w-10 rounded-full flex items-center justify-center transition-colors relative overflow-hidden group/btn cursor-pointer"
+                style={{ borderRadius: "50%" }}
+                aria-label="Open menu"
+              >
+                {/* Normal state: Studio Logo / Initials */}
+                <div
+                  className="h-full w-full rounded-full bg-slate-900 flex items-center justify-center text-white font-bold shadow-xs transition-opacity duration-150 group-hover/btn:opacity-0 overflow-hidden"
+                  style={{ borderRadius: "50%" }}
+                >
+                  {branding.logoUrl ? (
+                    <img
+                      src={branding.logoUrl}
+                      alt={branding.studioName}
+                      className="h-full w-full object-cover rounded-full"
+                      style={{ borderRadius: "50%" }}
+                    />
+                  ) : (
+                    <span className="font-bold text-white text-sm">
+                      {(branding.studioName || "T").slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Hover state: Slider Simple Icon (PanelLeftOpen) - Simple, no border highlight */}
+                <div
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-100 text-slate-700 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-150"
+                  style={{ borderRadius: "50%" }}
+                >
+                  <PanelLeftOpen className="h-5 w-5" />
+                </div>
+              </button>
+
+              {/* Floating tooltip message at the side: "Open menu" like Gemini */}
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 z-50 flex items-center">
+                <span>Open menu</span>
+                <div className="absolute -left-1 top-1/2 -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-slate-900" />
+              </div>
             </div>
-            <div>
-              <span className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-purple-300">
-                TalentSea
-              </span>
-              <span className="text-[10px] block font-mono text-purple-400 -mt-1 tracking-wider uppercase">Studio Admin</span>
-            </div>
-          </div>
+          ) : (
+            /* Expanded state: Static Studio Branding + Inner Close Button */
+            <>
+              <div className="flex items-center gap-3 flex-1 overflow-hidden min-w-0 select-none">
+                <div
+                  className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold shadow-xs shrink-0 overflow-hidden"
+                  style={{ borderRadius: "50%" }}
+                >
+                  {branding.logoUrl ? (
+                    <img
+                      src={branding.logoUrl}
+                      alt={branding.studioName}
+                      className="h-full w-full object-cover rounded-full"
+                      style={{ borderRadius: "50%" }}
+                    />
+                  ) : (
+                    <span className="font-bold text-white text-base">
+                      {(branding.studioName || "T").slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold text-base text-slate-900 tracking-tight truncate block leading-tight">
+                    {branding.studioName || "TalentSea"}
+                  </span>
+                  {branding.tagline ? (
+                    <span className="text-xs block text-slate-500 truncate leading-tight mt-0.5 font-medium">
+                      {branding.tagline}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] block font-mono text-slate-400 leading-tight uppercase font-medium">
+                      Studio Admin
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Inner Close Button with tooltip */}
+              <div className="relative group/close">
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  aria-label="Close menu"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 ml-1 cursor-pointer"
+                >
+                  <PanelLeftClose className="h-5 w-5" />
+                </button>
+                <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-md shadow-md whitespace-nowrap opacity-0 group-hover/close:opacity-100 pointer-events-none transition-opacity duration-150 z-50">
+                  <span>Close menu</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
+
         <NavLinks />
       </aside>
 
       {/* Mobile sidebar */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs lg:hidden"
           onClick={() => setSidebarOpen(false)}>
-          <aside className="fixed left-0 top-0 h-screen w-64 border-r border-slate-800 bg-slate-950"
+          <aside className="fixed left-0 top-0 h-screen w-64 border-r border-slate-200 bg-white shadow-xl flex flex-col"
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex h-16 items-center border-b border-slate-800 px-6">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center">
-                  <span className="font-bold text-white text-lg">T</span>
+            <div className="flex h-16 items-center border-b border-slate-200 px-6">
+              {/* Static Studio Branding on Mobile */}
+              <div className="flex items-center gap-3 select-none min-w-0">
+                <div
+                  className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold shadow-xs shrink-0 overflow-hidden"
+                  style={{ borderRadius: "50%" }}
+                >
+                  {branding.logoUrl ? (
+                    <img
+                      src={branding.logoUrl}
+                      alt={branding.studioName}
+                      className="h-full w-full object-cover rounded-full"
+                      style={{ borderRadius: "50%" }}
+                    />
+                  ) : (
+                    <span className="font-bold text-white text-base">
+                      {(branding.studioName || "T").slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
                 </div>
-                <span className="font-bold text-lg text-white">TalentSea Studio</span>
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold text-base text-slate-900 tracking-tight truncate block leading-tight">
+                    {branding.studioName || "TalentSea"}
+                  </span>
+                  {branding.tagline && (
+                    <span className="text-xs block text-slate-500 truncate leading-tight mt-0.5 font-medium">
+                      {branding.tagline}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <NavLinks onLinkClick={() => setSidebarOpen(false)} />
@@ -368,61 +568,75 @@ export default function AdminLayout() {
       )}
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-6 shadow-lg">
-          <Button variant="ghost" size="icon" className="lg:hidden text-slate-300 hover:text-white hover:bg-slate-800" onClick={() => setSidebarOpen(true)}>
+      <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? "lg:pl-20" : "lg:pl-64"}`}>
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white/80 backdrop-blur-md pl-4 lg:pl-6 pr-3 sm:pr-4 shadow-2xs">
+          <Button variant="ghost" size="icon" className="lg:hidden text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
 
           <div className="flex flex-1 items-center gap-4">
             <div className="relative max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <Input type="search" placeholder="Search videos, subscribers, analytics..." className="pl-9 bg-slate-900/90 text-slate-100 placeholder:text-slate-500 border border-slate-800 focus:border-purple-500/50 rounded-xl" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input type="search" placeholder="Search videos, subscribers, analytics..." className="pl-10 bg-slate-50 text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:bg-white focus:border-slate-900 rounded-xl h-10 text-sm" />
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 rounded-xl">
+          <div className="flex items-center gap-2.5 ml-auto">
+            <Button variant="ghost" size="icon" className="relative text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl h-10 w-10 shrink-0">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500" />
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2.5 text-slate-200 hover:bg-slate-800/60 border border-slate-800/80 rounded-xl px-3 py-1.5">
-                  <Avatar className="h-8 w-8 ring-2 ring-purple-500/40">
-                    <AvatarImage src={profile.avatarUrl} />
-                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-cyan-500 text-white text-xs font-bold">
+                <Button
+                  variant="ghost"
+                  className="gap-2.5 text-slate-800 hover:bg-slate-50 border border-slate-200 rounded-full pl-1.5 pr-4 py-1.5 shadow-2xs h-10 transition-colors"
+                  style={{ borderRadius: "50px" }}
+                >
+                  <Avatar
+                    className="h-7.5 w-7.5 rounded-full border border-slate-200 shrink-0 overflow-hidden"
+                    style={{ borderRadius: "50%" }}
+                  >
+                    <AvatarImage
+                      src={profile.avatarUrl}
+                      className="rounded-full object-cover"
+                      style={{ borderRadius: "50%" }}
+                    />
+                    <AvatarFallback
+                      className="bg-slate-900 text-white text-xs font-bold rounded-full"
+                      style={{ borderRadius: "50%" }}
+                    >
                       {(profile.name || "TS").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline text-sm font-medium">{profile.name}</span>
+                  <span className="hidden md:inline text-sm font-semibold text-slate-800">{profile.name}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200 shadow-2xl">
+              <DropdownMenuContent align="end" className="w-56 bg-white border-slate-200 text-slate-800 shadow-xl rounded-xl">
                 <DropdownMenuLabel>
                   <div>
-                    <p className="font-semibold text-white">{profile.name}</p>
-                    <p className="text-xs text-slate-400 font-normal">{profile.email}</p>
+                    <p className="font-semibold text-slate-900">{profile.name}</p>
+                    <p className="text-xs text-slate-500 font-normal">{profile.email}</p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-800" />
-                <DropdownMenuItem onClick={() => setProfileOpen(true)} className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
-                  <User className="mr-2 h-4 w-4 text-purple-400" />Profile
+                <DropdownMenuSeparator className="bg-slate-100" />
+                <DropdownMenuItem onClick={() => setProfileOpen(true)} className="hover:bg-slate-50 focus:bg-slate-50 cursor-pointer text-slate-700">
+                  <User className="mr-2 h-4 w-4 text-slate-500" />Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/settings")} className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4 text-purple-400" />Settings
+                <DropdownMenuItem onClick={() => navigate("/settings")} className="hover:bg-slate-50 focus:bg-slate-50 cursor-pointer text-slate-700">
+                  <Settings className="mr-2 h-4 w-4 text-slate-500" />Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-800" />
-                <DropdownMenuItem className="text-red-400 hover:bg-slate-800 focus:bg-slate-800 cursor-pointer" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />Log out
+                <DropdownMenuSeparator className="bg-slate-100" />
+                <DropdownMenuItem className="text-rose-600 hover:bg-rose-50 focus:bg-rose-50 cursor-pointer" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4 text-rose-500" />Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
-        <main className="p-6">
+        <main className="p-6 md:p-8">
           <Outlet />
         </main>
         <ApiResponseMonitor />

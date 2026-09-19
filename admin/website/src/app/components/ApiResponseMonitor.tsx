@@ -36,29 +36,29 @@ export default function ApiResponseMonitor() {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-900/95 border border-purple-500/40 text-purple-300 hover:text-white hover:bg-slate-800 shadow-[0_4px_25px_rgba(124,58,237,0.3)] backdrop-blur-md transition-all duration-200 cursor-pointer group"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 shadow-lg backdrop-blur-md transition-all duration-200 cursor-pointer group"
         >
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
-          <Terminal className="h-4 w-4 text-purple-400 group-hover:scale-110 transition-transform" />
+          <Terminal className="h-4 w-4 text-slate-400 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-semibold tracking-wide">API Responses</span>
-          <span className="px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-800 text-[10px] font-mono text-purple-300 font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300 font-bold">
             {logs.length}
           </span>
-          <ChevronUp className="h-4 w-4 text-slate-400" />
+          <ChevronUp className="h-4 w-4 text-slate-500" />
         </button>
       ) : (
         /* Expanded Sticky Monitor Drawer */
-        <div className="w-[520px] max-w-[calc(100vw-2rem)] bg-slate-950/95 border border-slate-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden flex flex-col h-[420px] transition-all duration-200">
+        <div className="w-[520px] max-w-[calc(100vw-2rem)] bg-slate-950/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col h-[420px] transition-all duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-md bg-purple-950 border border-purple-800 flex items-center justify-center">
-                <Terminal className="h-3.5 w-3.5 text-purple-400" />
+              <div className="h-6 w-6 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <Terminal className="h-3.5 w-3.5 text-slate-400" />
               </div>
-              <span className="text-xs font-bold text-white tracking-wide">Live Backend API Monitor</span>
+              <span className="text-xs font-bold text-white tracking-wide">Backend API Monitor</span>
               <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">
                 {logs.length} logged
               </span>
@@ -98,12 +98,12 @@ export default function ApiResponseMonitor() {
                     onClick={() => setSelectedLogId(log.id)}
                     className={`w-full text-left p-2.5 transition-colors cursor-pointer flex flex-col gap-1 ${
                       isSelected
-                        ? "bg-purple-950/40 text-white border-l-2 border-purple-500"
+                        ? "bg-slate-800 text-white border-l-2 border-slate-400"
                         : "hover:bg-slate-900/60 text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-slate-900 text-purple-400">
+                      <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-slate-900 text-slate-300">
                         {log.method}
                       </span>
                       <span
@@ -129,7 +129,7 @@ export default function ApiResponseMonitor() {
                 <>
                   <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-900/80">
                     <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                      <Code className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                      <Code className="h-3 w-3 text-slate-400 flex-shrink-0" />
                       <span className="text-[10px] font-mono text-slate-300 truncate" title={selectedLog.url}>
                         {selectedLog.url.replace(/^https?:\/\/[^\/]+/, "")}
                       </span>
@@ -137,7 +137,7 @@ export default function ApiResponseMonitor() {
                     <button
                       type="button"
                       onClick={handleCopyJson}
-                      className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-purple-300 transition-colors flex-shrink-0"
+                      className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300 transition-colors flex-shrink-0"
                     >
                       {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                       <span>{copied ? "Copied" : "Copy"}</span>

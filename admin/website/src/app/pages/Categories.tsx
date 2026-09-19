@@ -72,89 +72,89 @@ function CategoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-900 border border-slate-800 text-slate-100 max-w-md">
+      <DialogContent className="bg-white border border-slate-200/80 text-slate-900 max-w-md rounded-2xl shadow-xl">
         <DialogHeader>
-          <DialogTitle className="text-white text-lg">
+          <DialogTitle className="text-slate-900 text-lg font-bold tracking-tight">
             {isEdit ? `Edit "${category?.name}"` : "Create New Category"}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
-            {isEdit ? "Update category attributes" : "Add a new content category for your media catalog"}
+          <DialogDescription className="text-slate-500 text-sm mt-1">
+            {isEdit ? "Update category attributes and visual identifier." : "Add a new content category for your media catalog."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {error && (
-            <div className="p-3 rounded-lg bg-red-950/60 border border-red-800/80 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-center gap-2 font-medium">
+              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           <div>
-            <Label className="text-xs text-slate-300">Category Name</Label>
+            <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Category Name</Label>
             <Input
               placeholder="e.g., Programming"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 bg-slate-950 border-slate-800 text-slate-100 focus:border-purple-500"
+              className="bg-white border-slate-200 text-slate-900 rounded-xl"
             />
           </div>
 
           <div>
-            <Label className="text-xs text-slate-300">Description</Label>
+            <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Description</Label>
             <Textarea
               placeholder="Brief description of this content category"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 bg-slate-950 border-slate-800 text-slate-100 focus:border-purple-500"
+              className="bg-white border-slate-200 text-slate-900 rounded-xl resize-none text-sm font-medium"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-xs text-slate-300">Icon (Emoji)</Label>
+              <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Icon (Emoji)</Label>
               <Input
                 placeholder="💻"
                 maxLength={4}
                 value={icon}
                 onChange={(e) => setIcon(e.target.value)}
-                className="mt-1 bg-slate-950 border-slate-800 text-slate-100 focus:border-purple-500 text-center"
+                className="bg-white border-slate-200 text-slate-900 text-center rounded-xl"
               />
             </div>
             <div>
-              <Label className="text-xs text-slate-300">Theme Color</Label>
-              <div className="flex gap-2 mt-1">
+              <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Theme Color</Label>
+              <div className="flex gap-2">
                 <Input
                   type="color"
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  className="w-12 h-9 p-1 bg-slate-950 border-slate-800 cursor-pointer rounded-lg"
+                  className="w-12 h-10.5 p-1 bg-white border-slate-200 cursor-pointer rounded-xl"
                 />
                 <Input
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 focus:border-purple-500 font-mono text-xs"
+                  className="bg-white border-slate-200 text-slate-900 font-mono text-sm rounded-xl"
                 />
               </div>
             </div>
           </div>
 
           {/* Live preview */}
-          <div className="border border-slate-800 rounded-xl p-3.5 bg-slate-950/60">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category Badge Preview</p>
+          <div className="border border-slate-200/80 rounded-xl p-3.5 bg-slate-50">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Category Badge Preview</p>
             <div className="flex items-center gap-3">
               <div
-                className="h-10 w-10 rounded-lg flex items-center justify-center text-xl shadow-sm border border-white/10"
-                style={{ backgroundColor: `${color}30` }}
+                className="h-10 w-10 rounded-xl flex items-center justify-center text-xl shadow-xs border border-slate-200/80"
+                style={{ backgroundColor: `${color}20` }}
               >
                 {icon || "📁"}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-slate-100 truncate">{name || "Category Name"}</div>
-                <div className="text-xs text-slate-400 truncate">{description || "Category description will appear here..."}</div>
+                <div className="font-semibold text-sm text-slate-900 truncate">{name || "Category Name"}</div>
+                <div className="text-xs text-slate-500 truncate">{description || "Category description will appear here..."}</div>
               </div>
-              <div className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+              <div className="h-4 w-4 rounded-full border border-slate-300 shadow-xs" style={{ backgroundColor: color }} />
             </div>
           </div>
 
@@ -164,16 +164,16 @@ function CategoryDialog({
               variant="outline"
               onClick={onClose}
               disabled={submitting}
-              className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300"
+              className="border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-semibold shadow-xs h-10 px-4"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-purple-600 hover:bg-purple-500 text-white font-medium px-5"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-5 rounded-xl shadow-xs text-sm h-10"
             >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
               {isEdit ? "Save Changes" : "Create Category"}
             </Button>
           </DialogFooter>
@@ -257,7 +257,7 @@ export default function Categories() {
   };
 
   return (
-    <div className="space-y-6 text-slate-100">
+    <div className="space-y-6 text-slate-900">
       <CategoryDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -272,11 +272,11 @@ export default function Categories() {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-100 max-w-sm">
+        <DialogContent className="bg-white border border-slate-200/80 text-slate-900 max-w-sm rounded-2xl shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-white text-base">Delete Category?</DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">
-              Are you sure you want to delete <span className="text-slate-200 font-semibold">"{deleteTarget?.name}"</span>?
+            <DialogTitle className="text-slate-900 text-base font-bold tracking-tight">Delete Category?</DialogTitle>
+            <DialogDescription className="text-slate-500 text-xs mt-1 leading-relaxed">
+              Are you sure you want to delete <span className="text-slate-900 font-semibold">"{deleteTarget?.name}"</span>?
               Linked video assets will remain intact and be unassigned.
             </DialogDescription>
           </DialogHeader>
@@ -285,16 +285,16 @@ export default function Categories() {
               variant="outline"
               onClick={() => setDeleteTarget(null)}
               disabled={actionLoading}
-              className="bg-slate-800 border-slate-700 text-slate-300"
+              className="border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs"
             >
               Cancel
             </Button>
             <Button
               onClick={handleDeleteCategory}
               disabled={actionLoading}
-              className="bg-red-600 hover:bg-red-500 text-white font-medium"
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-xs text-xs"
             >
-              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
               Confirm Delete
             </Button>
           </DialogFooter>
@@ -302,16 +302,15 @@ export default function Categories() {
       </Dialog>
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <FolderTree className="h-6 w-6 text-purple-400" />
-            <h1 className="text-2xl font-bold text-white tracking-tight">Categories</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Categories</h1>
           </div>
-          <p className="text-slate-400 text-sm mt-1">Organize and structure your video content catalog with custom categories</p>
+          <p className="text-slate-500 text-sm mt-1">Organize and structure your video content catalog with custom categories</p>
         </div>
         <Button
-          className="gap-2 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20"
+          className="gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs font-semibold"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-4 w-4" /> Add Category
@@ -320,42 +319,42 @@ export default function Categories() {
 
       {/* Loading & Error States */}
       {loading ? (
-        <Card className="bg-slate-900/80 border-slate-800 p-12 text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto mb-3" />
-          <p className="text-sm text-slate-400">Loading categories catalog...</p>
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-slate-900 mx-auto mb-3" />
+          <p className="text-sm text-slate-500 font-medium">Loading categories catalog...</p>
         </Card>
       ) : error ? (
-        <Card className="bg-slate-900/80 border-red-900/50 p-8 text-center space-y-3">
-          <AlertCircle className="h-8 w-8 text-red-400 mx-auto" />
-          <p className="text-sm text-red-300 font-medium">{error}</p>
-          <Button variant="outline" onClick={fetchCategoriesList} className="gap-2 bg-slate-800 border-slate-700 text-slate-200">
-            <RefreshCw className="h-4 w-4" /> Retry Request
+        <Card className="bg-white border border-red-200 shadow-xs rounded-2xl p-8 text-center space-y-3">
+          <AlertCircle className="h-8 w-8 text-red-600 mx-auto" />
+          <p className="text-sm text-red-800 font-semibold">{error}</p>
+          <Button variant="outline" onClick={fetchCategoriesList} className="gap-2 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl shadow-xs text-xs font-semibold">
+            <RefreshCw className="h-3.5 w-3.5" /> Retry Request
           </Button>
         </Card>
       ) : categories.length === 0 ? (
-        <Card className="bg-slate-900/80 border-slate-800 p-12 text-center space-y-3">
-          <FolderTree className="h-10 w-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-semibold text-slate-200">No categories found</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">You haven't created any categories yet. Create your first category to start organizing videos.</p>
-          <Button onClick={() => setCreateOpen(true)} className="gap-2 bg-purple-600 hover:bg-purple-500 text-white text-xs">
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-12 text-center space-y-3">
+          <FolderTree className="h-10 w-10 text-slate-300 mx-auto" />
+          <h3 className="text-base font-bold text-slate-900">No categories found</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">You haven't created any categories yet. Create your first category to start organizing videos.</p>
+          <Button onClick={() => setCreateOpen(true)} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs text-xs font-semibold">
             <Plus className="h-4 w-4" /> Create Category
           </Button>
         </Card>
       ) : (
         <div className="space-y-6">
           {/* Detailed Category List with Reorder Controls */}
-          <Card className="bg-slate-900/80 border border-slate-800/80 shadow-xl">
-            <CardHeader className="border-b border-slate-800/80 pb-4">
-              <CardTitle className="text-base font-bold text-white flex items-center justify-between">
+          <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
                 <span>All Categories ({categories.length})</span>
-                <span className="text-xs font-normal text-slate-400">Use arrow controls to reorder display sequence</span>
+                <span className="text-xs font-normal text-slate-500">Use arrow controls to reorder display sequence</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               {categories.map((cat, idx) => (
                 <div
                   key={cat.id}
-                  className="flex items-center gap-4 p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-xl hover:border-purple-500/40 transition-all group"
+                  className="flex items-center gap-4 p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl hover:bg-slate-100/70 transition-all group"
                 >
                   {/* Reorder Buttons */}
                   <div className="flex flex-col gap-0.5">
@@ -363,26 +362,26 @@ export default function Categories() {
                       type="button"
                       disabled={idx === 0}
                       onClick={() => handleMove(idx, "up")}
-                      className="p-1 text-slate-500 hover:text-purple-400 disabled:opacity-20 transition-colors"
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
                       title="Move up"
                     >
-                      <ArrowUp className="h-3.5 w-3.5" />
+                      <ArrowUp className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
                       disabled={idx === categories.length - 1}
                       onClick={() => handleMove(idx, "down")}
-                      className="p-1 text-slate-500 hover:text-purple-400 disabled:opacity-20 transition-colors"
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
                       title="Move down"
                     >
-                      <ArrowDown className="h-3.5 w-3.5" />
+                      <ArrowDown className="h-4 w-4" />
                     </button>
                   </div>
 
                   {/* Icon & Color Badge */}
                   <div
-                    className="h-11 w-11 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/10 shrink-0"
-                    style={{ backgroundColor: `${cat.color}30` }}
+                    className="h-11 w-11 rounded-xl flex items-center justify-center text-xl shadow-xs border border-slate-200/80 shrink-0"
+                    style={{ backgroundColor: `${cat.color}20` }}
                   >
                     {cat.icon || "📁"}
                   </div>
@@ -390,19 +389,19 @@ export default function Categories() {
                   {/* Category Metadata */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm text-slate-100 truncate">{cat.name}</h3>
-                      <Badge variant="outline" className="bg-purple-950/60 border-purple-800/60 text-purple-300 text-[10px] px-2 py-0.5 rounded-full">
+                      <h3 className="font-semibold text-sm text-slate-900 truncate">{cat.name}</h3>
+                      <Badge variant="outline" className="bg-slate-200/70 border-0 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
                         {cat.contentCount ?? 0} videos
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
                       {cat.description || "No description provided."}
                     </p>
                   </div>
 
                   {/* Theme Color Indicator */}
                   <div
-                    className="h-5 w-5 rounded-full border border-white/20 shrink-0 hidden sm:block"
+                    className="h-4 w-4 rounded-full border border-slate-300 shadow-xs shrink-0 hidden sm:block"
                     style={{ backgroundColor: cat.color }}
                     title={`Color: ${cat.color}`}
                   />
@@ -413,7 +412,7 @@ export default function Categories() {
                       variant="outline"
                       size="icon"
                       onClick={() => setEditCategory(cat)}
-                      className="h-8 w-8 bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg"
+                      className="h-8 w-8 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-xl shadow-xs"
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </Button>
@@ -421,7 +420,7 @@ export default function Categories() {
                       variant="outline"
                       size="icon"
                       onClick={() => setDeleteTarget(cat)}
-                      className="h-8 w-8 bg-slate-900 border-slate-800 text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-lg"
+                      className="h-8 w-8 bg-white border border-slate-200 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl shadow-xs"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -430,43 +429,6 @@ export default function Categories() {
               ))}
             </CardContent>
           </Card>
-
-          {/* Cards Grid Overview */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((cat) => (
-              <Card key={cat.id} className="bg-slate-900/80 border-slate-800/80 hover:border-purple-500/30 transition-all flex flex-col justify-between">
-                <CardHeader className="border-b border-slate-800/80 p-4 pb-3" style={{ borderBottomColor: `${cat.color}40` }}>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="h-10 w-10 rounded-xl flex items-center justify-center text-lg shadow-sm border border-white/10 shrink-0"
-                      style={{ backgroundColor: `${cat.color}30` }}
-                    >
-                      {cat.icon || "📁"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-sm font-semibold text-slate-100 truncate">{cat.name}</CardTitle>
-                      <p className="text-xs text-purple-400 font-medium">{cat.contentCount ?? 0} published items</p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 pt-3 flex-1 flex flex-col justify-between space-y-3">
-                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                    {cat.description || "No description provided."}
-                  </p>
-                  <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditCategory(cat)}
-                      className="flex-1 bg-slate-950 border-slate-800 text-xs text-slate-300 hover:text-white"
-                    >
-                      <Edit className="h-3.5 w-3.5 mr-1 text-purple-400" /> Edit Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
       )}
     </div>

@@ -17,24 +17,24 @@ function RouteErrorBoundary() {
   console.error("Route error caught:", error);
   return (
     <div className="flex flex-col items-center justify-center min-h-[450px] p-6 text-center">
-      <div className="bg-slate-900/80 border border-slate-800 p-8 rounded-2xl max-w-lg w-full shadow-2xl backdrop-blur-xl">
-        <div className="h-12 w-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4 text-rose-400 text-xl font-bold font-mono">
+      <div className="bg-white border border-slate-200 p-8 rounded-2xl max-w-lg w-full shadow-lg">
+        <div className="h-12 w-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto mb-4 text-rose-600 text-xl font-bold font-mono">
           !
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Application Notice</h2>
-        <p className="text-sm text-slate-400 mb-6">
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Application Notice</h2>
+        <p className="text-sm text-slate-500 mb-6">
           {error?.message || "A rendering exception occurred on this screen. Reloading may resolve the state."}
         </p>
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-purple-600/30"
+            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs cursor-pointer"
           >
             Reload Screen
           </button>
           <a
             href="/"
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium transition-colors border border-slate-700"
+            className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-semibold transition-colors border border-slate-200 shadow-xs cursor-pointer"
           >
             Go to Dashboard
           </a>

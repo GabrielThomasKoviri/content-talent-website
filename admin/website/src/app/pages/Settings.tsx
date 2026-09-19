@@ -5,13 +5,24 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { User, Lock, Bell, CreditCard, Globe, Shield, Save, Loader2, Upload, Check } from "lucide-react";
+import {
+  User, Lock, Bell, CreditCard, Globe, Shield, Save, Loader2, Upload, Check,
+  Building2, AlertCircle, CheckCircle2
+} from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
-import { getCreatorProfile, updateCreatorProfile, uploadAvatarPhoto, ApiProfile } from "../services/apiService";
+import {
+  getCreatorProfile,
+  updateCreatorProfile,
+  uploadAvatarPhoto,
+  getPayoutSettings,
+  updatePayoutSettings,
+  ApiProfile,
+  ApiPayoutProfile,
+} from "../services/apiService";
 
 export default function Settings() {
   const [loading, setLoading] = useState(true);
@@ -33,27 +44,48 @@ export default function Settings() {
   const [youtube, setYoutube] = useState("");
   const [instagram, setInstagram] = useState("");
 
-  // Load Profile from API
+  // Bank Payout Account Fields
+  const [bankProfile, setBankProfile] = useState<ApiPayoutProfile | null>(null);
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [bankError, setBankError] = useState<string | null>(null);
+  const [bankSuccess, setBankSuccess] = useState<string | null>(null);
+
+  // Load Profile and Payout Settings from API
   useEffect(() => {
     setLoading(true);
-    getCreatorProfile()
-      .then((profile: ApiProfile) => {
-        if (profile.firstName) setFirstName(profile.firstName);
-        if (profile.lastName) setLastName(profile.lastName);
-        if (profile.email) setEmail(profile.email);
-        if (profile.bio !== undefined) setBio(profile.bio);
-        if (profile.website !== undefined) setWebsite(profile.website);
-        if (profile.phone !== undefined) setPhone(profile.phone);
-        if (profile.location !== undefined) setLocation(profile.location);
-        if (profile.avatarUrl) setAvatarUrl(profile.avatarUrl);
-        if (profile.socialLinks) {
-          setTwitter(profile.socialLinks.twitter || "");
-          setYoutube(profile.socialLinks.youtube || "");
-          setInstagram(profile.socialLinks.instagram || "");
-        }
-      })
-      .catch((err) => {
+    Promise.all([
+      getCreatorProfile().catch((err) => {
         console.warn("Failed to load creator profile from API", err);
+        return null;
+      }),
+      getPayoutSettings().catch((err) => {
+        console.warn("Failed to load payout settings from API", err);
+        return null;
+      }),
+    ])
+      .then(([profile, payout]) => {
+        if (profile) {
+          if (profile.firstName) setFirstName(profile.firstName);
+          if (profile.lastName) setLastName(profile.lastName);
+          if (profile.email) setEmail(profile.email);
+          if (profile.bio !== undefined) setBio(profile.bio);
+          if (profile.website !== undefined) setWebsite(profile.website);
+          if (profile.phone !== undefined) setPhone(profile.phone);
+          if (profile.location !== undefined) setLocation(profile.location);
+          if (profile.avatarUrl) setAvatarUrl(profile.avatarUrl);
+          if (profile.socialLinks) {
+            setTwitter(profile.socialLinks.twitter || "");
+            setYoutube(profile.socialLinks.youtube || "");
+            setInstagram(profile.socialLinks.instagram || "");
+          }
+        }
+        if (payout) {
+          setBankProfile(payout);
+          if (payout.account_holder_name) setAccountHolderName(payout.account_holder_name);
+          if (payout.ifsc_code) setIfscCode(payout.ifsc_code);
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -61,6 +93,8 @@ export default function Settings() {
   // Save Section Changes Handler
   const handleSaveSection = async (sectionKey: string) => {
     setSavingSection(sectionKey);
+    setBankError(null);
+    setBankSuccess(null);
     try {
       if (sectionKey === "profile" || sectionKey === "social") {
         await updateCreatorProfile({
@@ -76,6 +110,27 @@ export default function Settings() {
             instagram,
           },
         });
+      } else if (sectionKey === "billing") {
+        if (!accountHolderName.trim() || accountHolderName.trim().length < 3) {
+          throw new Error("Account holder name must be at least 3 characters.");
+        }
+        if (!accountNumber.trim() || accountNumber.trim().length < 9) {
+          throw new Error("Account number must be between 9 and 18 digits.");
+        }
+        const cleanIfsc = ifscCode.trim().toUpperCase();
+        const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+        if (!ifscRegex.test(cleanIfsc)) {
+          throw new Error("Invalid Indian IFSC format (e.g. HDFC0000128).");
+        }
+
+        const updated = await updatePayoutSettings({
+          account_holder_name: accountHolderName.trim(),
+          account_number: accountNumber.trim(),
+          ifsc_code: cleanIfsc,
+        });
+        setBankProfile(updated);
+        setAccountNumber("");
+        setBankSuccess(`Bank details registered! Resolved Bank: ${updated.bank_name || "Verified"}`);
       } else {
         // Minor async delay for other setting section triggers
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -84,7 +139,10 @@ export default function Settings() {
       setTimeout(() => {
         setSavedSection((prev) => (prev === sectionKey ? null : prev));
       }, 3000);
-    } catch (err) {
+    } catch (err: any) {
+      if (sectionKey === "billing") {
+        setBankError(err?.message || "Failed to update bank payout details.");
+      }
       console.error(`Failed to update ${sectionKey} settings`, err);
     } finally {
       setSavingSection(null);
@@ -101,10 +159,10 @@ export default function Settings() {
         onClick={() => handleSaveSection(sectionKey)}
         disabled={isSaving || loading}
         size="sm"
-        className={`gap-1.5 font-semibold text-xs transition-all duration-200 ${
+        className={`gap-1.5 font-semibold text-xs rounded-xl shadow-xs transition-all duration-200 ${
           isSaved
-            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20"
-            : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/20 dark:bg-purple-600 dark:hover:bg-purple-500"
+            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+            : "bg-slate-900 hover:bg-slate-800 text-white"
         }`}
       >
         {isSaving ? (
@@ -149,47 +207,49 @@ export default function Settings() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-gray-600 mt-1">Manage your account and platform settings</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
+          <p className="text-sm text-slate-500 mt-1">Manage your creator profile, credentials, and payout configurations.</p>
         </div>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="profile" className="gap-2">
+        <TabsList className="bg-slate-100 border border-slate-200/80 p-1 rounded-xl inline-flex w-full lg:w-auto overflow-x-auto gap-1">
+          <TabsTrigger value="profile" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
             <User className="h-4 w-4" />
-            <span className="hidden md:inline">Profile</span>
+            <span>Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2">
+          <TabsTrigger value="security" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
             <Lock className="h-4 w-4" />
-            <span className="hidden md:inline">Security</span>
+            <span>Security</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
+          <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
             <Bell className="h-4 w-4" />
-            <span className="hidden md:inline">Notifications</span>
+            <span>Notifications</span>
           </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-2">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden md:inline">Billing</span>
+          <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
+            <Building2 className="h-4 w-4" />
+            <span>Payouts</span>
           </TabsTrigger>
-          <TabsTrigger value="preferences" className="gap-2">
+          <TabsTrigger value="preferences" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
             <Globe className="h-4 w-4" />
-            <span className="hidden md:inline">Preferences</span>
+            <span>Preferences</span>
           </TabsTrigger>
-          <TabsTrigger value="advanced" className="gap-2">
+          <TabsTrigger value="advanced" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
             <Shield className="h-4 w-4" />
-            <span className="hidden md:inline">Advanced</span>
+            <span>Advanced</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Profile Settings */}
         <TabsContent value="profile" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Profile Information</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Profile Information</CardTitle>
+              </div>
               {renderSaveButton("profile")}
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5 pt-5">
               {loading ? (
                 <div className="flex items-center justify-center py-8 text-slate-400 gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" /> Loading profile details...
@@ -197,11 +257,11 @@ export default function Settings() {
               ) : (
                 <>
                   <div className="flex items-center gap-6">
-                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden relative">
+                    <div className="h-20 w-20 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-2xl font-bold overflow-hidden relative shadow-xs">
                       {avatarUrl ? (
                         <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
-                        `${firstName.charAt(0)}${lastName.charAt(0)}`
+                        `${firstName ? firstName.charAt(0) : "C"}${lastName ? lastName.charAt(0) : "T"}`
                       )}
                     </div>
                     <div>
@@ -210,45 +270,45 @@ export default function Settings() {
                         size="sm"
                         disabled={uploadingAvatar}
                         onClick={() => fileInputRef.current?.click()}
-                        className="gap-2"
+                        className="gap-2 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs text-sm font-semibold h-9 px-3"
                       >
                         {uploadingAvatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                         {uploadingAvatar ? "Uploading..." : "Change Avatar"}
                       </Button>
-                      <p className="text-xs text-gray-500 mt-1">JPG, PNG or WEBP. Max size 2MB</p>
+                      <p className="text-xs text-slate-400 mt-1.5 font-normal">JPG, PNG or WEBP (Max 2MB)</p>
                     </div>
                   </div>
                   <Separator />
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <Label htmlFor="first-name">First Name</Label>
-                      <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                      <Label htmlFor="first-name" className="text-sm font-semibold text-slate-800 block mb-1.5">First Name</Label>
+                      <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="rounded-xl border-slate-200" />
                     </div>
                     <div>
-                      <Label htmlFor="last-name">Last Name</Label>
-                      <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                      <Label htmlFor="last-name" className="text-sm font-semibold text-slate-800 block mb-1.5">Last Name</Label>
+                      <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className="rounded-xl border-slate-200" />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="email">Email Address <span className="text-xs text-slate-400 font-normal">(Read-only)</span></Label>
-                    <Input id="email" type="email" value={email} disabled className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed" />
+                    <Label htmlFor="email" className="text-sm font-semibold text-slate-800 block mb-1.5">Email Address <span className="text-xs text-slate-400 font-normal">(Read-only)</span></Label>
+                    <Input id="email" type="email" value={email} disabled className="bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed rounded-xl" />
                   </div>
                   <div>
-                    <Label htmlFor="bio">Bio</Label>
-                    <Input id="bio" value={bio} onChange={(e) => setBio(e.target.value)} />
+                    <Label htmlFor="bio" className="text-sm font-semibold text-slate-800 block mb-1.5">Bio</Label>
+                    <Input id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell your audience about your channel" className="rounded-xl border-slate-200" />
                   </div>
                   <div>
-                    <Label htmlFor="website">Website</Label>
-                    <Input id="website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                    <Label htmlFor="website" className="text-sm font-semibold text-slate-800 block mb-1.5">Website</Label>
+                    <Input id="website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" className="rounded-xl border-slate-200" />
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                      <Label htmlFor="phone" className="text-sm font-semibold text-slate-800 block mb-1.5">Phone Number</Label>
+                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" className="rounded-xl border-slate-200" />
                     </div>
                     <div>
-                      <Label htmlFor="location">Location</Label>
-                      <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
+                      <Label htmlFor="location" className="text-sm font-semibold text-slate-800 block mb-1.5">Location</Label>
+                      <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, Country" className="rounded-xl border-slate-200" />
                     </div>
                   </div>
                 </>
@@ -256,23 +316,25 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Social Links</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Social Links</CardTitle>
+              </div>
               {renderSaveButton("social")}
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               <div>
-                <Label htmlFor="twitter">Twitter</Label>
-                <Input id="twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/username" />
+                <Label htmlFor="twitter" className="text-sm font-semibold text-slate-800 block mb-1.5">Twitter / X</Label>
+                <Input id="twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/username" className="rounded-xl border-slate-200" />
               </div>
               <div>
-                <Label htmlFor="youtube">YouTube</Label>
-                <Input id="youtube" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/@username" />
+                <Label htmlFor="youtube" className="text-sm font-semibold text-slate-800 block mb-1.5">YouTube</Label>
+                <Input id="youtube" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/@username" className="rounded-xl border-slate-200" />
               </div>
               <div>
-                <Label htmlFor="instagram">Instagram</Label>
-                <Input id="instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/username" />
+                <Label htmlFor="instagram" className="text-sm font-semibold text-slate-800 block mb-1.5">Instagram</Label>
+                <Input id="instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/username" className="rounded-xl border-slate-200" />
               </div>
             </CardContent>
           </Card>
@@ -280,68 +342,76 @@ export default function Settings() {
 
         {/* Security Settings */}
         <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Change Password</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Change Password</CardTitle>
+              </div>
               {renderSaveButton("password", "Update Password")}
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               <div>
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" />
+                <Label htmlFor="current-password" className="text-sm font-semibold text-slate-800 block mb-1.5">Current Password</Label>
+                <Input id="current-password" type="password" className="rounded-xl border-slate-200" />
               </div>
               <div>
-                <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
+                <Label htmlFor="new-password" className="text-sm font-semibold text-slate-800 block mb-1.5">New Password</Label>
+                <Input id="new-password" type="password" className="rounded-xl border-slate-200" />
               </div>
               <div>
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" />
+                <Label htmlFor="confirm-password" className="text-sm font-semibold text-slate-800 block mb-1.5">Confirm New Password</Label>
+                <Input id="confirm-password" type="password" className="rounded-xl border-slate-200" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Two-Factor Authentication</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Two-Factor Authentication</CardTitle>
+              </div>
               {renderSaveButton("2fa")}
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5 pt-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium">Enable 2FA</div>
-                  <div className="text-sm text-gray-600">
-                    Add an extra layer of security to your account
+                  <div className="font-semibold text-sm text-slate-900">Enable 2FA</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Add an extra layer of security to your admin account
                   </div>
                 </div>
                 <Switch />
               </div>
               <Separator />
-              <Button variant="outline">Configure Authenticator App</Button>
+              <Button variant="outline" className="rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs text-sm font-semibold h-9 px-4">
+                Configure Authenticator App
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Notification Settings */}
         <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Email Notifications</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Email Notifications</CardTitle>
+              </div>
               {renderSaveButton("notifications")}
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5 pt-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium">New Subscribers</div>
-                  <div className="text-sm text-gray-600">Get notified when someone subscribes</div>
+                  <div className="font-semibold text-sm text-slate-900">New Subscribers</div>
+                  <div className="text-xs text-slate-500 mt-0.5">Get notified instantly when someone joins a paid tier</div>
                 </div>
                 <Switch defaultChecked />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium">Comments</div>
-                  <div className="text-sm text-gray-600">Get notified about new comments</div>
+                  <div className="font-semibold text-sm text-slate-900">Comments & Engagement</div>
+                  <div className="text-xs text-slate-500 mt-0.5">Get notified about new community discussions and replies</div>
                 </div>
                 <Switch defaultChecked />
               </div>
@@ -349,25 +419,116 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Billing Settings */}
+        {/* Payout & Bank Account Settings */}
         <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Payment Method</CardTitle>
-              {renderSaveButton("billing")}
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Bank Payout Account</CardTitle>
+              </div>
+              {renderSaveButton("billing", "Save Bank Details")}
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded flex items-center justify-center text-white font-bold">
-                    VISA
+            <CardContent className="space-y-6 pt-5">
+              {bankSuccess && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800 bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>{bankSuccess}</span>
+                </div>
+              )}
+
+              {bankError && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-red-800 bg-red-50 p-3.5 rounded-xl border border-red-200">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                  <span>{bankError}</span>
+                </div>
+              )}
+
+              {bankProfile?.is_configured && (
+                <div className="border border-emerald-200 bg-emerald-50/50 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-11 w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-slate-900">
+                          {bankProfile.bank_name || "Verified Commercial Bank"}
+                        </span>
+                        <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                          Active & Linked
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-slate-600 mt-1">
+                        Account: <span className="font-mono font-medium text-slate-900">{bankProfile.account_number_masked}</span> • IFSC: <span className="font-mono font-medium text-slate-900">{bankProfile.ifsc_code}</span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Beneficiary: {bankProfile.account_holder_name}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">•••• •••• •••• 4242</div>
-                    <div className="text-sm text-gray-600">Expires 12/24</div>
+                  <div className="text-xs md:text-right text-slate-500 font-medium">
+                    Auto-disbursed on the 28th
                   </div>
                 </div>
-                <Button variant="outline" size="sm">Edit</Button>
+              )}
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">
+                  {bankProfile?.is_configured ? "Update Account Details" : "Register Payout Account"}
+                </h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="account-holder" className="text-sm font-semibold text-slate-800 block mb-1.5">Account Holder / Beneficiary Name</Label>
+                    <Input
+                      id="account-holder"
+                      placeholder="e.g. TalentSea Media Ltd or John Doe"
+                      value={accountHolderName}
+                      onChange={(e) => setAccountHolderName(e.target.value)}
+                      className="rounded-xl border-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="ifsc-code" className="text-sm font-semibold text-slate-800 block mb-1.5">IFSC Code</Label>
+                    <Input
+                      id="ifsc-code"
+                      placeholder="e.g. HDFC0000128"
+                      maxLength={11}
+                      value={ifscCode}
+                      onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                      className="rounded-xl border-slate-200 font-mono uppercase"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="account-number" className="text-sm font-semibold text-slate-800 block mb-1.5">Bank Account Number</Label>
+                  <Input
+                    id="account-number"
+                    type="password"
+                    placeholder={bankProfile?.is_configured ? "Enter new number to update" : "9 to 18 digits account number"}
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value)}
+                    className="rounded-xl border-slate-200 font-mono"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2 text-xs text-slate-600">
+                <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4 text-slate-900" />
+                  Net-30 Settlement Lifecycle & Schedule
+                </div>
+                <p>
+                  • <strong className="text-slate-800">Accrual Period:</strong> IMA VAST impressions accrue from the 1st to the end of each calendar month.
+                </p>
+                <p>
+                  • <strong className="text-slate-800">Audit & Reconciliation:</strong> Between the 1st and 20th of the following month, impressions undergo fraud and invalid-traffic scrubbing.
+                </p>
+                <p>
+                  • <strong className="text-slate-800">Disbursement Date:</strong> Payouts are executed automatically on the <strong className="text-slate-800">28th of every month</strong> for accounts with total accrued earnings of at least <strong className="text-slate-800">₹500</strong>. Balances under ₹500 roll over into the next cycle.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -375,24 +536,29 @@ export default function Settings() {
 
         {/* Preferences */}
         <TabsContent value="preferences" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>General Preferences</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 tracking-tight">General Preferences</CardTitle>
+                <p className="text-xs text-slate-500 mt-0.5">Customize your dashboard locale and regional formats</p>
+              </div>
               {renderSaveButton("preferences")}
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               <div>
-                <Label htmlFor="language">Language</Label>
-                <Select defaultValue="en">
-                  <SelectTrigger id="language">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="language" className="text-xs font-semibold text-slate-700">Language</Label>
+                <div className="mt-1.5">
+                  <Select defaultValue="en">
+                    <SelectTrigger id="language" className="rounded-xl border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200">
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Spanish</SelectItem>
+                      <SelectItem value="fr">French</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -400,13 +566,18 @@ export default function Settings() {
 
         {/* Advanced Settings */}
         <TabsContent value="advanced" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Data & Privacy</CardTitle>
+          <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 tracking-tight">Data & Privacy</CardTitle>
+                <p className="text-xs text-slate-500 mt-0.5">Export data and audit platform privacy compliance</p>
+              </div>
               {renderSaveButton("privacy")}
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Button variant="outline">Download My Data</Button>
+            <CardContent className="space-y-4 pt-5">
+              <Button variant="outline" className="rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs text-xs font-semibold">
+                Download My Data
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

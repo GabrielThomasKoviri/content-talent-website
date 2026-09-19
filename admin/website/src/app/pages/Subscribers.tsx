@@ -49,17 +49,17 @@ function DatePickerDialog({ open, onClose, value, onChange }: {
   const [local, setLocal] = useState(value);
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xs">
+      <DialogContent className="max-w-xs bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Filter by Date</DialogTitle>
-          <DialogDescription>Show subscribers who joined on this date</DialogDescription>
+          <DialogTitle className="text-base font-bold text-slate-900">Filter by Date</DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">Show subscribers who joined on this date</DialogDescription>
         </DialogHeader>
         <div className="py-2">
-          <Input type="date" value={local} onChange={(e) => setLocal(e.target.value)} />
+          <Input type="date" value={local} onChange={(e) => setLocal(e.target.value)} className="bg-white border-slate-200 text-slate-900 rounded-xl text-xs h-10" />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { onChange(""); setLocal(""); onClose(); }}>Clear</Button>
-          <Button onClick={() => { onChange(local); onClose(); }}>Apply</Button>
+        <DialogFooter className="gap-2 pt-2 border-t border-slate-100">
+          <Button variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl" onClick={() => { onChange(""); setLocal(""); onClose(); }}>Clear</Button>
+          <Button className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs" onClick={() => { onChange(local); onClose(); }}>Apply</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -137,9 +137,9 @@ export default function Subscribers() {
     : `${currencySymbol}0.00`;
 
   const subscriberStats = [
-    { name: "Total Subscribers", value: totalSubscribersVal, icon: Users, color: "text-blue-400", bgColor: "bg-blue-500/10" },
-    { name: "Growth Rate", value: growthRateVal, icon: TrendingUp, color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-    { name: "Avg. Revenue / Member", value: avgRevVal, icon: DollarSign, color: "text-amber-400", bgColor: "bg-amber-500/10" },
+    { name: "Total Subscribers", value: totalSubscribersVal, icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
+    { name: "Growth Rate", value: growthRateVal, icon: TrendingUp, color: "text-emerald-600", bgColor: "bg-emerald-50" },
+    { name: "Avg. Revenue / Member", value: avgRevVal, icon: DollarSign, color: "text-amber-600", bgColor: "bg-amber-50" },
   ];
 
   const planChartData = breakdown && breakdown.tiers && breakdown.tiers.length > 0
@@ -147,7 +147,7 @@ export default function Subscribers() {
         name: t.name,
         value: t.subscribers,
         percentage: t.subscribersPercentage,
-        color: t.color || "#8b5cf6",
+        color: t.color || "#0F172A",
         revenue: t.revenue,
       }))
     : [];
@@ -168,39 +168,35 @@ export default function Subscribers() {
     <div className="space-y-8">
       <DatePickerDialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} value={filterDate} onChange={setFilterDate} />
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Subscribers & Members
-            <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded-full font-mono font-medium flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              LIVE FASTAPI
-            </span>
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Monitor registered mobile users, subscription tiers, and engagement status.</p>
+          <p className="text-slate-500 mt-1 text-sm font-normal">Monitor registered mobile users, subscription tiers, and engagement status.</p>
         </div>
         <button
           onClick={handleManualRefresh}
           disabled={refreshing || loading}
           title="Refresh Data"
-          className="p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white transition-all disabled:opacity-50 self-start md:self-auto"
+          className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition-all disabled:opacity-50 self-start md:self-auto"
         >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin text-purple-400" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin text-slate-900" : "text-slate-600"}`} />
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         {subscriberStats.map((stat) => (
-          <Card key={stat.name} className="bg-slate-900/60 backdrop-blur-xl border-slate-800/80 shadow-xl hover:border-purple-500/30 transition-all">
+          <Card key={stat.name} className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className={`${stat.bgColor} ${stat.color} p-3.5 rounded-xl border border-white/5`}>
-                  <stat.icon className="h-6 w-6" />
+                <div className={`${stat.bgColor} ${stat.color} p-3 rounded-xl`}>
+                  <stat.icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-white tracking-tight">{stat.value}</div>
-                  <div className="text-xs font-medium text-slate-400 mt-0.5">{stat.name}</div>
+                  <div className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">{stat.value}</div>
+                  <div className="text-sm font-semibold text-slate-700 mt-1">{stat.name}</div>
                 </div>
               </div>
             </CardContent>
@@ -209,9 +205,9 @@ export default function Subscribers() {
       </div>
 
       {/* Pie chart by plan */}
-      <Card className="bg-slate-900/60 backdrop-blur-xl border-slate-800/80 shadow-xl">
-        <CardHeader className="border-b border-slate-800/60 pb-4">
-          <CardTitle className="text-lg font-semibold text-white">Subscribers Distribution by Tier</CardTitle>
+      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <CardTitle className="text-lg font-bold text-slate-900">Subscribers Distribution by Tier</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-center gap-8">
@@ -221,22 +217,22 @@ export default function Subscribers() {
                   data={
                     breakdown && breakdown.totalSubscribers > 0
                       ? planChartData
-                      : [{ name: "Registered Members", value: 100, color: "#6366f1" }]
+                      : [{ name: "Registered Members", value: 100, color: "#0F172A" }]
                   }
                   cx="50%"
                   cy="50%"
                   innerRadius={55}
-                  outerRadius={90}
+                  outerRadius={85}
                   dataKey="value"
                   paddingAngle={3}
                 >
                   {planChartData.map((entry, i) => (
-                    <Cell key={`cell-${i}`} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
+                    <Cell key={`cell-${i}`} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip
                   formatter={(v: number, name: string) => [`${v.toLocaleString()} subscribers`, name]}
-                  contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "8px", color: "#fff" }}
+                  contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "#E2E8F0", borderRadius: "12px", color: "#0F172A", boxShadow: "0 4px 16px rgba(0,0,0,0.06)", fontSize: "12px" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -244,17 +240,17 @@ export default function Subscribers() {
               {planChartData.map((d) => (
                 <div key={d.name} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5">
-                    <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                    <span className="text-slate-200 font-medium text-sm">{d.name} Plan</span>
+                    <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                    <span className="text-slate-800 font-medium text-sm">{d.name} Plan</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="w-36 h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-36 h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.max(d.percentage || 5, 2)}%`, backgroundColor: d.color }}
                       />
                     </div>
-                    <span className="text-slate-300 font-mono w-16 text-right font-semibold">
+                    <span className="text-slate-800 font-mono w-16 text-right font-semibold">
                       {d.value.toLocaleString()}
                     </span>
                     <span className="text-slate-500 font-mono w-12 text-right">
@@ -269,42 +265,42 @@ export default function Subscribers() {
       </Card>
 
       {/* Subscriber table with working filters */}
-      <Card className="bg-slate-900/60 backdrop-blur-xl border-slate-800/80 shadow-xl overflow-hidden">
-        <CardHeader className="border-b border-slate-800/60 pb-4">
+      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl overflow-hidden">
+        <CardHeader className="border-b border-slate-100 pb-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <CardTitle className="text-lg font-semibold text-white">Active Subscriber Roster</CardTitle>
-                <span className="text-xs bg-slate-800 text-slate-400 border border-slate-700 px-2.5 py-0.5 rounded-full">
+                <CardTitle className="text-lg font-bold text-slate-900">Active Subscriber Roster</CardTitle>
+                <span className="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full font-medium">
                   {filtered.length} of {subscribers.length} showing
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  <Input type="search" placeholder="Search subscribers..." className="pl-9 w-60 bg-slate-950 text-slate-100 placeholder:text-slate-500 border border-slate-800 focus:border-purple-500/50 rounded-xl"
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input type="search" placeholder="Search subscribers..." className="pl-9 w-60 bg-white text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 rounded-xl shadow-xs"
                     value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
-                <Button variant={showFilters ? "default" : "outline"} className={`gap-2 rounded-xl text-xs font-semibold ${
-                  showFilters ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
+                <Button variant={showFilters ? "default" : "outline"} className={`gap-2 rounded-xl text-xs font-semibold shadow-xs ${
+                  showFilters ? "bg-slate-900 hover:bg-slate-800 text-white" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                 }`} onClick={() => setShowFilters(!showFilters)}>
                   <SlidersHorizontal className="h-4 w-4" />
                   Filters
                   {activeCount > 0 && (
-                    <span className="ml-1 bg-white text-purple-900 rounded-full text-xs font-bold px-1.5">{activeCount}</span>
+                    <span className="ml-1 bg-white text-slate-900 rounded-full text-xs font-bold px-1.5">{activeCount}</span>
                   )}
                 </Button>
               </div>
             </div>
 
             {showFilters && (
-              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
                 <div className="grid grid-cols-3 gap-4 mb-3">
                   <div>
-                    <Label className="text-xs mb-1.5 block text-slate-400">Plan</Label>
+                    <Label className="text-xs mb-1.5 block text-slate-500 font-semibold uppercase tracking-wider">Plan</Label>
                     <Select value={filterPlan} onValueChange={setFilterPlan}>
-                      <SelectTrigger className="h-9 text-xs bg-slate-900 border-slate-800 text-slate-200"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                      <SelectTrigger className="h-9 text-xs bg-white border-slate-200 text-slate-800 rounded-xl shadow-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200 text-slate-800 rounded-xl shadow-xl">
                         <SelectItem value="all">All Plans</SelectItem>
                         {availablePlans.map((p) => (
                           <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
@@ -319,10 +315,10 @@ export default function Subscribers() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block text-slate-400">Status</Label>
+                    <Label className="text-xs mb-1.5 block text-slate-500 font-semibold uppercase tracking-wider">Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="h-9 text-xs bg-slate-900 border-slate-800 text-slate-200"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                      <SelectTrigger className="h-9 text-xs bg-white border-slate-200 text-slate-800 rounded-xl shadow-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200 text-slate-800 rounded-xl shadow-xl">
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="Active">Active</SelectItem>
                         <SelectItem value="Free">Free</SelectItem>
@@ -331,20 +327,20 @@ export default function Subscribers() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block text-slate-400">Join Date</Label>
-                    <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs w-full justify-start bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800"
+                    <Label className="text-xs mb-1.5 block text-slate-500 font-semibold uppercase tracking-wider">Join Date</Label>
+                    <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl shadow-xs"
                       onClick={() => setDatePickerOpen(true)}>
-                      <Calendar className="h-3.5 w-3.5 text-purple-400" />
+                      <Calendar className="h-3.5 w-3.5 text-slate-500" />
                       {filterDate || "Pick date"}
                       {filterDate && (
-                        <X className="h-3 w-3 ml-auto text-slate-500 hover:text-rose-400"
+                        <X className="h-3 w-3 ml-auto text-slate-400 hover:text-rose-600"
                           onClick={(e) => { e.stopPropagation(); setFilterDate(""); }} />
                       )}
                     </Button>
                   </div>
                 </div>
                 {activeCount > 0 && (
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-slate-400 hover:text-white h-7" onClick={resetFilters}>
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-slate-500 hover:text-slate-900 h-7" onClick={resetFilters}>
                     <X className="h-3 w-3" />Clear filters
                   </Button>
                 )}
@@ -356,74 +352,74 @@ export default function Subscribers() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-16 text-slate-400 flex items-center justify-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-purple-400" /> Loading subscriber records...
+              <Loader2 className="h-5 w-5 animate-spin text-slate-600" /> Loading subscriber records...
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">
-              <Users className="h-10 w-10 mx-auto mb-3 opacity-30 text-purple-400" />
-              <p className="font-medium text-slate-300">No subscribers match your filters</p>
-              <Button variant="link" className="text-purple-400 mt-1" onClick={resetFilters}>Clear all filters</Button>
+            <div className="text-center py-16 text-slate-400">
+              <Users className="h-10 w-10 mx-auto mb-3 text-slate-300 stroke-[1.5]" />
+              <p className="font-medium text-slate-700">No subscribers match your filters</p>
+              <Button variant="link" className="text-slate-900 mt-1" onClick={resetFilters}>Clear all filters</Button>
             </div>
           ) : (
             <Table>
-              <TableHeader className="bg-slate-950/80 border-b border-slate-800">
-                <TableRow className="border-slate-800/80 hover:bg-transparent">
-                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Subscriber</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Plan</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Status</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Join Date</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase font-mono">Monthly Revenue</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase font-mono text-right">Actions</TableHead>
+              <TableHeader className="bg-slate-50/80 border-b border-slate-100">
+                <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                  <TableHead className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Subscriber</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Plan</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Join Date</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Monthly Revenue</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-semibold uppercase tracking-wider text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((subscriber) => (
-                  <TableRow key={subscriber.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                  <TableRow key={subscriber.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
                     <TableCell className="py-3.5">
                       <div className="flex items-center gap-3">
                         {subscriber.avatarUrl ? (
                           <img
                             src={subscriber.avatarUrl}
                             alt={subscriber.name}
-                            className="h-10 w-10 rounded-full object-cover border border-purple-500/20"
+                            className="h-10 w-10 rounded-full object-cover border border-slate-200"
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 via-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                          <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-semibold text-sm shadow-xs">
                             {subscriber.name.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-sm text-slate-100">{subscriber.name}</div>
-                          <div className="text-xs text-slate-400 font-mono">{subscriber.email}</div>
+                          <div className="font-semibold text-sm text-slate-900">{subscriber.name}</div>
+                          <div className="text-xs text-slate-500">{subscriber.email}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="py-3.5">
                       <Badge variant="outline" className={`gap-1 font-mono text-xs border ${
-                        subscriber.status === "Active" ? "bg-purple-500/10 text-purple-300 border-purple-500/30" : "bg-slate-800 text-slate-300 border-slate-700"
+                        subscriber.status === "Active" ? "bg-slate-100 text-slate-800 border-slate-200" : "bg-slate-50 text-slate-600 border-slate-200"
                       }`}>
-                        {subscriber.status === "Active" && <Crown className="h-3 w-3 text-purple-400" />}
+                        {subscriber.status === "Active" && <Crown className="h-3 w-3 text-slate-700" />}
                         {subscriber.plan}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3.5">
                       <Badge variant="outline" className={`font-mono text-xs border ${
-                        subscriber.status === "Active" ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" : "bg-slate-800 text-slate-400 border-slate-700"
+                        subscriber.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"
                       }`}>
                         {subscriber.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3.5 text-slate-400 font-mono text-xs">{subscriber.joinDate}</TableCell>
-                    <TableCell className="py-3.5 font-mono text-xs font-bold text-emerald-400">{subscriber.revenue}</TableCell>
+                    <TableCell className="py-3.5 text-slate-500 font-mono text-xs">{subscriber.joinDate}</TableCell>
+                    <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-900">{subscriber.revenue}</TableCell>
                     <TableCell className="py-3.5 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                          <DropdownMenuItem className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"><Mail className="mr-2 h-4 w-4 text-purple-400" />Send Email</DropdownMenuItem>
-                          <DropdownMenuItem className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"><Crown className="mr-2 h-4 w-4 text-amber-400" />Change Plan</DropdownMenuItem>
-                          <DropdownMenuItem className="text-rose-400 hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"><UserX className="mr-2 h-4 w-4" />Suspend Account</DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="bg-white border-slate-200 text-slate-700 shadow-xl rounded-xl">
+                          <DropdownMenuItem className="hover:bg-slate-50 focus:bg-slate-50 cursor-pointer"><Mail className="mr-2 h-4 w-4 text-slate-500" />Send Email</DropdownMenuItem>
+                          <DropdownMenuItem className="hover:bg-slate-50 focus:bg-slate-50 cursor-pointer"><Crown className="mr-2 h-4 w-4 text-slate-500" />Change Plan</DropdownMenuItem>
+                          <DropdownMenuItem className="text-rose-600 hover:bg-rose-50 focus:bg-rose-50 cursor-pointer"><UserX className="mr-2 h-4 w-4" />Suspend Account</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -134,31 +134,27 @@ function EditPlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-6 overflow-hidden bg-slate-900 border border-slate-800 text-slate-100">
+      <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-6 overflow-hidden bg-white border border-slate-200 text-slate-900 rounded-2xl shadow-2xl">
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">
               <Badge
                 variant="outline"
-                className={
-                  isNoAds
-                    ? "border-purple-500/50 bg-purple-500/10 text-purple-300 font-mono text-[10px]"
-                    : "border-blue-500/50 bg-blue-500/10 text-blue-300 font-mono text-[10px]"
-                }
+                className="border-slate-200 bg-slate-100 text-slate-700 font-mono text-[10px] font-semibold uppercase"
               >
                 {isNoAds ? "TIER 2: PREMIUM AD-FREE" : "TIER 1: STANDARD WITH ADS"}
               </Badge>
             </div>
-            <DialogTitle className="text-xl font-bold text-white">
-              Edit "{plan.name}" Pricing & Copy
+            <DialogTitle className="text-xl font-bold text-slate-900">
+              Edit "{plan.name}" Pricing
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-sm">
-              Configure creator-facing plan name, tagline, base price, discount %, and marketing highlight badge.
+            <DialogDescription className="text-slate-500 text-sm mt-1">
+              Update plan pricing, discounts, and highlights.
             </DialogDescription>
           </DialogHeader>
 
           {error && (
-            <div className="mt-3 p-3 rounded-lg bg-rose-950/50 border border-rose-500/30 text-rose-200 text-xs">
+            <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
               {error}
             </div>
           )}
@@ -166,7 +162,7 @@ function EditPlanDialog({
           <div className="space-y-4 my-4 overflow-y-auto max-h-[55vh] pr-2">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="plan-name" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="plan-name" className="text-sm font-semibold text-slate-800 block mb-1.5">
                   Plan Display Name
                 </Label>
                 <Input
@@ -174,12 +170,12 @@ function EditPlanDialog({
                   placeholder="e.g. Standard or Premium"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
+                  className="bg-white border-slate-200 text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 rounded-xl shadow-xs"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="plan-price" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="plan-price" className="text-sm font-semibold text-slate-800 block mb-1.5">
                   Base Price (₹ INR)
                 </Label>
                 <Input
@@ -190,7 +186,7 @@ function EditPlanDialog({
                   placeholder="e.g. 499"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
+                  className="bg-white border-slate-200 text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 rounded-xl shadow-xs"
                   required
                 />
               </div>
@@ -198,7 +194,7 @@ function EditPlanDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="plan-discount" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="plan-discount" className="text-sm font-semibold text-slate-800 block mb-1.5">
                   Discount Percentage (%)
                 </Label>
                 <Input
@@ -210,31 +206,31 @@ function EditPlanDialog({
                   placeholder="0"
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}
-                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
+                  className="bg-white border-slate-200 text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 rounded-xl shadow-xs"
                 />
               </div>
               <div>
-                <Label htmlFor="plan-badge" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="plan-badge" className="text-sm font-semibold text-slate-800 block mb-1.5">
                   Marketing Badge (Optional)
                 </Label>
                 <Input
                   id="plan-badge"
-                  placeholder="e.g. POPULAR, BEST VALUE, 20% OFF"
+                  placeholder="e.g. POPULAR, BEST VALUE"
                   value={badgeText}
                   onChange={(e) => setBadgeText(e.target.value)}
-                  className="bg-slate-950/80 border-slate-800 text-white mt-1"
+                  className="bg-white border-slate-200 text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 rounded-xl shadow-xs"
                 />
               </div>
             </div>
 
             {/* Calculated Final Price Callout */}
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                <Tag className="h-3.5 w-3.5 text-purple-400" />
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5 text-slate-500" />
                 Subscriber Charged Price:
               </span>
               <div className="text-right">
-                <span className="text-base font-bold text-emerald-400">
+                <span className="text-base font-bold text-slate-900">
                   {formatRupees(finalPrice)}/month
                 </span>
                 {numDiscount > 0 && (
@@ -246,7 +242,7 @@ function EditPlanDialog({
             </div>
 
             <div>
-              <Label htmlFor="plan-description" className="text-xs font-semibold text-slate-300">
+              <Label htmlFor="plan-description" className="text-sm font-semibold text-slate-800 block mb-1.5">
                 Plan Tagline / Description
               </Label>
               <Textarea
@@ -255,25 +251,25 @@ function EditPlanDialog({
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-slate-950/80 border-slate-800 text-white mt-1 text-sm"
+                className="bg-white border-slate-200 text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 rounded-xl text-sm shadow-xs"
               />
             </div>
 
             {/* Platform-Governed Features (Read-Only) */}
-            <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3.5 space-y-2.5">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5 text-slate-600" />
                   Platform Technical Entitlements
                 </span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono font-medium">
                   Locked by OTT Engine
                 </span>
               </div>
               <div className="space-y-1.5 pt-1">
                 {plan.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-xs text-slate-400">
-                    <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <div key={idx} className="flex items-center gap-2 text-xs text-slate-600">
+                    <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                     <span>{feature}</span>
                   </div>
                 ))}
@@ -281,14 +277,14 @@ function EditPlanDialog({
             </div>
           </div>
 
-          <DialogFooter className="pt-2 border-t border-slate-800/80">
-            <Button type="button" variant="outline" onClick={onClose} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+          <DialogFooter className="pt-3 border-t border-slate-100 gap-2">
+            <Button type="button" variant="outline" onClick={onClose} className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50 rounded-xl shadow-xs">
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold gap-2 shadow-lg shadow-purple-950/40"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-xl gap-2 shadow-xs"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Plan Pricing
@@ -337,16 +333,16 @@ export default function SubscriptionPlans() {
       />
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Subscription Plans</h1>
-            <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-full font-mono font-medium flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Subscription Plans</h1>
+            <span className="text-xs bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full font-mono font-medium flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-slate-600" />
               TWO-TIER OTT ENGINE
             </span>
           </div>
-          <p className="text-slate-400 mt-1.5 text-sm max-w-2xl">
+          <p className="text-slate-500 mt-1.5 text-sm max-w-2xl font-normal">
             Configure pricing, discounts, and promotional badges for your Standard (With Ads) and Premium (Ad-Free) tiers. Technical entitlements and DRM policies are platform-governed.
           </p>
         </div>
@@ -354,14 +350,14 @@ export default function SubscriptionPlans() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-          <Loader2 className="h-8 w-8 text-purple-400 animate-spin" />
-          <p className="text-sm font-medium">Synchronizing subscription tiers...</p>
+          <Loader2 className="h-8 w-8 text-slate-600 animate-spin" />
+          <p className="text-sm font-medium text-slate-600">Synchronizing subscription tiers...</p>
         </div>
       ) : plans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 border border-dashed border-slate-800 rounded-2xl bg-slate-900/40 text-center p-8">
-          <Sparkles className="h-10 w-10 text-purple-400 mb-3" />
-          <h3 className="text-lg font-bold text-white">Initializing Two-Tier OTT Engine</h3>
-          <p className="text-sm text-slate-400 mt-1 max-w-sm">
+        <div className="flex flex-col items-center justify-center py-16 border border-dashed border-slate-200 rounded-2xl bg-white text-center p-8 shadow-xs">
+          <Sparkles className="h-10 w-10 text-slate-400 mb-3" />
+          <h3 className="text-base font-bold text-slate-900">Initializing Two-Tier OTT Engine</h3>
+          <p className="text-sm text-slate-500 mt-1 max-w-sm">
             Contact platform administration if your studio's standard tiers are not automatically initialized.
           </p>
         </div>
@@ -377,59 +373,50 @@ export default function SubscriptionPlans() {
             return (
               <Card
                 key={plan.id}
-                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl transition-all duration-200 backdrop-blur-sm ${
+                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl transition-all duration-200 bg-white shadow-xs ${
                   isNoAds
-                    ? "bg-gradient-to-b from-purple-950/30 via-slate-900/80 to-slate-900 border-2 border-purple-500/50 shadow-2xl shadow-purple-950/40"
-                    : "bg-gradient-to-b from-slate-900/90 via-slate-900/60 to-slate-900 border border-slate-800 shadow-xl"
+                    ? "border-2 border-slate-900 shadow-sm"
+                    : "border border-slate-200/80"
                 }`}
               >
-                {/* Top Ambient Glow for Premium */}
-                {isNoAds && (
-                  <div className="absolute -top-16 -right-16 w-36 h-36 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
-                )}
-
-                <CardHeader className="border-b border-slate-800/80 pb-6 relative z-10">
+                <CardHeader className="border-b border-slate-100 pb-6 relative z-10">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <Badge
                       variant="outline"
-                      className={
-                        isNoAds
-                          ? "border-purple-500/60 bg-purple-500/20 text-purple-200 font-mono text-[10px] tracking-wider uppercase"
-                          : "border-blue-500/60 bg-blue-500/20 text-blue-200 font-mono text-[10px] tracking-wider uppercase"
-                      }
+                      className="border-slate-200 bg-slate-100 text-slate-700 font-mono text-[10px] tracking-wider uppercase font-semibold"
                     >
                       {isNoAds ? "Tier 2 • Ad-Free" : "Tier 1 • With Ads"}
                     </Badge>
 
                     {plan.badgeText && (
-                      <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
-                        <Zap className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full shadow-2xs">
+                        <Zap className="h-3 w-3 fill-amber-500 text-amber-500" />
                         {plan.badgeText}
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                    <CardTitle className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                       {plan.name}
                     </CardTitle>
-                    <p className="text-sm text-slate-400 mt-1 min-h-[38px] line-clamp-2">
+                    <p className="text-sm text-slate-500 mt-1 min-h-[38px] line-clamp-2 font-normal">
                       {plan.description || (isNoAds ? "Unlimited ad-free OTT streaming in Full HD" : "Full access to entire video library with occasional short ads")}
                     </p>
                   </div>
 
-                  <div className="mt-5 pt-4 border-t border-slate-800/60 flex items-baseline gap-2.5 flex-wrap">
-                    <span className="text-4xl font-extrabold text-white tracking-tight">
+                  <div className="mt-5 pt-4 border-t border-slate-100 flex items-baseline gap-2.5 flex-wrap">
+                    <span className="text-4xl font-extrabold text-slate-900 tracking-tight">
                       {formatRupees(finalPrice)}
                     </span>
                     {hasDiscount && (
-                      <span className="text-lg font-medium text-slate-500 line-through">
+                      <span className="text-lg font-medium text-slate-400 line-through">
                         {formatRupees(basePrice)}
                       </span>
                     )}
-                    <span className="text-slate-400 text-sm font-medium">/month</span>
+                    <span className="text-slate-500 text-sm font-normal">/month</span>
                     {hasDiscount && (
-                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2 py-0.5 rounded-full font-bold">
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5 rounded-full font-semibold">
                         {discountVal}% OFF
                       </span>
                     )}
@@ -439,21 +426,21 @@ export default function SubscriptionPlans() {
                 <CardContent className="pt-6 flex flex-col justify-between flex-1 relative z-10 space-y-6">
                   {/* Live Studio Telemetry Cards */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-                        <Users className="h-3.5 w-3.5 text-blue-400" />
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+                        <Users className="h-3.5 w-3.5 text-blue-600" />
                         Active Members
                       </div>
-                      <div className="text-lg font-bold text-white">
+                      <div className="text-lg font-bold text-slate-900">
                         {plan.subscribers.toLocaleString()}
                       </div>
                     </div>
-                    <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+                        <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
                         Monthly Revenue
                       </div>
-                      <div className="text-lg font-bold text-emerald-400">
+                      <div className="text-lg font-bold text-slate-900">
                         {plan.revenue}
                       </div>
                     </div>
@@ -461,15 +448,15 @@ export default function SubscriptionPlans() {
 
                   {/* Technical Platform Feature Entitlements */}
                   <div className="space-y-3">
-                    <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono flex items-center justify-between">
+                    <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider font-mono flex items-center justify-between">
                       <span>Platform Capabilities</span>
-                      <span className="text-emerald-400 text-[10px] font-normal lowercase">enforced</span>
+                      <span className="text-emerald-700 text-[10px] font-normal lowercase">enforced</span>
                     </div>
                     <div className="space-y-2.5">
                       {plan.features.map((feature, idx) => (
                         <div key={idx} className="flex items-start gap-2.5 text-sm">
-                          <Check className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
-                          <span className="text-slate-300 text-xs font-medium leading-relaxed">
+                          <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                          <span className="text-slate-600 text-xs font-medium leading-relaxed">
                             {feature}
                           </span>
                         </div>
@@ -478,13 +465,13 @@ export default function SubscriptionPlans() {
                   </div>
 
                   {/* Edit Action */}
-                  <div className="pt-4 border-t border-slate-800/80">
+                  <div className="pt-4 border-t border-slate-100">
                     <Button
                       onClick={() => setEditPlan(plan)}
-                      className={`w-full h-11 font-semibold gap-2 rounded-xl transition-all shadow-md ${
+                      className={`w-full h-11 font-medium gap-2 rounded-xl transition-all shadow-xs ${
                         isNoAds
-                          ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/40"
-                          : "bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 hover:text-white"
+                          ? "bg-slate-900 hover:bg-slate-800 text-white"
+                          : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200"
                       }`}
                     >
                       <Edit className="h-4 w-4" />

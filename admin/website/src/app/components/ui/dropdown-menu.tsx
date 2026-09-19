@@ -38,7 +38,7 @@ const DropdownMenuContent = React.forwardRef<
       data-slot="dropdown-menu-content"
       sideOffset={sideOffset}
       className={cn(
-        "bg-slate-900/95 text-slate-100 border border-slate-800 shadow-2xl backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[9rem] overflow-hidden rounded-xl p-1.5",
+        "bg-white text-slate-900 border border-slate-200/90 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[9rem] overflow-hidden rounded-xl p-1.5",
         className,
       )}
       {...props}
@@ -68,7 +68,7 @@ const DropdownMenuItem = React.forwardRef<
     data-inset={inset}
     data-variant={variant}
     className={cn(
-      "focus:bg-slate-800/80 focus:text-white hover:bg-slate-800/80 text-slate-200 data-[variant=destructive]:text-rose-400 data-[variant=destructive]:focus:bg-rose-950/40 relative flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium outline-none select-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+      "focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 text-slate-700 data-[variant=destructive]:text-rose-600 data-[variant=destructive]:focus:bg-rose-50 relative flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium outline-none select-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
       className,
     )}
     {...props}
@@ -94,7 +94,7 @@ function DropdownMenuCheckboxItem({
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon className="size-4 text-purple-400" />
+          <CheckIcon className="size-4 text-slate-900" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -129,7 +129,7 @@ function DropdownMenuRadioItem({
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
-          <CircleIcon className="size-2 fill-purple-400 text-purple-400" />
+          <CircleIcon className="size-2 fill-slate-900 text-slate-900" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -149,7 +149,7 @@ function DropdownMenuLabel({
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
-        "px-2.5 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider data-[inset]:pl-8",
+        "px-2.5 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider data-[inset]:pl-8",
         className,
       )}
       {...props}
@@ -164,7 +164,7 @@ function DropdownMenuSeparator({
   return (
     <DropdownMenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn("bg-slate-800 -mx-1 my-1 h-px", className)}
+      className={cn("bg-slate-100 -mx-1 my-1 h-px", className)}
       {...props}
     />
   );

@@ -116,16 +116,16 @@ function TagInput({ tags, setTags }: { tags: string[]; setTags: (t: string[]) =>
     }
   };
   return (
-    <div className="border border-slate-800 rounded-xl p-2 flex flex-wrap gap-1.5 min-h-[44px] focus-within:ring-2 focus-within:ring-purple-500/30 bg-slate-950/90 text-slate-100">
+    <div className="border border-slate-200 rounded-xl p-2 flex flex-wrap gap-1.5 min-h-[44px] focus-within:ring-2 focus-within:ring-slate-900/10 focus-within:border-slate-900 bg-white text-slate-900">
       {tags.map((t) => (
-        <span key={t} className="inline-flex items-center gap-1 bg-purple-950/80 border border-purple-800/60 text-purple-300 text-xs font-medium px-2.5 py-1 rounded-full">
+        <span key={t} className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold px-2.5 py-1 rounded-lg">
           #{t}
-          <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-rose-400"><X className="h-3 w-3" /></button>
+          <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-rose-600 cursor-pointer"><X className="h-3 w-3" /></button>
         </span>
       ))}
       <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey}
         placeholder={tags.length === 0 ? "Add tags (press Enter or Space)..." : ""}
-        className="flex-1 min-w-[140px] text-sm outline-none bg-transparent text-slate-100 placeholder:text-slate-500 font-medium" />
+        className="flex-1 min-w-[140px] text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400 font-medium" />
     </div>
   );
 }
@@ -150,7 +150,7 @@ function ThumbnailSlot({
   }, [existingUrl]);
 
   return (
-    <div className={`relative border-2 ${isMain ? "border-purple-500 bg-purple-50/40" : "border-dashed border-slate-300 bg-slate-50"} rounded-xl overflow-hidden text-center transition-colors flex flex-col items-center justify-center p-2`}>
+    <div className={`relative border-2 ${isMain ? "border-slate-900 bg-slate-50" : "border-dashed border-slate-200 bg-slate-50/50 hover:border-slate-400"} rounded-xl overflow-hidden text-center transition-colors flex flex-col items-center justify-center p-2`}>
       <label className="cursor-pointer block w-full group">
         <input
           type="file"
@@ -165,17 +165,17 @@ function ThumbnailSlot({
           }}
         />
         {preview ? (
-          <div className="relative w-full h-20 bg-slate-900 rounded-md overflow-hidden group">
+          <div className="relative w-full h-20 bg-slate-900 rounded-lg overflow-hidden group">
             <img src={preview} alt={label} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white p-1">
-              <ImagePlus className="h-4 w-4 mb-0.5 text-purple-300" />
+              <ImagePlus className="h-4 w-4 mb-0.5 text-white" />
               <span className="text-[10px] font-semibold">Change Image</span>
             </div>
           </div>
         ) : (
           <div className="p-2">
-            <ImagePlus className="h-5 w-5 mx-auto text-slate-400 group-hover:text-purple-600 mb-1" />
-            <p className="text-[11px] text-slate-500 group-hover:text-purple-600 font-medium">{label}</p>
+            <ImagePlus className="h-5 w-5 mx-auto text-slate-400 group-hover:text-slate-700 mb-1 transition-colors" />
+            <p className="text-[11px] text-slate-500 group-hover:text-slate-900 font-medium transition-colors">{label}</p>
           </div>
         )}
       </label>
@@ -183,7 +183,7 @@ function ThumbnailSlot({
       <div className="mt-1 flex items-center justify-between w-full px-1">
         <span className="text-[10px] font-semibold text-slate-600 truncate">{label}</span>
         {isMain ? (
-          <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded-full">Primary</span>
+          <span className="text-[9px] font-bold text-white bg-slate-900 px-2 py-0.5 rounded-md">Primary</span>
         ) : onMakePrimary && preview ? (
           <button
             type="button"
@@ -191,7 +191,7 @@ function ThumbnailSlot({
               e.stopPropagation();
               onMakePrimary();
             }}
-            className="text-[9px] font-semibold text-purple-600 hover:text-purple-800 hover:underline"
+            className="text-[9px] font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
           >
             Make Primary
           </button>
@@ -211,31 +211,31 @@ function DateRangeDialog({ open, onClose, from, to, onChange }: {
   const [localTo, setLocalTo] = useState(to);
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+      <DialogContent className="max-w-sm bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Filter by Date</DialogTitle>
-          <DialogDescription>Select a single date or a date range</DialogDescription>
+          <DialogTitle className="text-slate-900 font-bold text-base">Filter by Date</DialogTitle>
+          <DialogDescription className="text-slate-500 text-xs">Select a single date or a date range</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label className="text-sm">From Date</Label>
-            <Input type="date" value={localFrom} onChange={(e) => setLocalFrom(e.target.value)} className="mt-1" />
+            <Label className="text-xs font-semibold text-slate-700">From Date</Label>
+            <Input type="date" value={localFrom} onChange={(e) => setLocalFrom(e.target.value)} className="mt-1 bg-white border-slate-200 text-slate-900 rounded-xl" />
           </div>
           <div>
-            <Label className="text-sm">To Date <span className="text-gray-400 font-normal">(optional)</span></Label>
-            <Input type="date" value={localTo} min={localFrom} onChange={(e) => setLocalTo(e.target.value)} className="mt-1" />
+            <Label className="text-xs font-semibold text-slate-700">To Date <span className="text-slate-400 font-normal">(optional)</span></Label>
+            <Input type="date" value={localTo} min={localFrom} onChange={(e) => setLocalTo(e.target.value)} className="mt-1 bg-white border-slate-200 text-slate-900 rounded-xl" />
           </div>
           {localFrom && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-700">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 font-medium">
               {localTo && localTo !== localFrom
                 ? <>Showing content from <strong>{localFrom}</strong> to <strong>{localTo}</strong></>
                 : <>Showing content on <strong>{localFrom}</strong></>}
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { onChange("", ""); setLocalFrom(""); setLocalTo(""); onClose(); }}>Clear</Button>
-          <Button onClick={() => { onChange(localFrom, localTo); onClose(); }}>Apply Filter</Button>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => { onChange("", ""); setLocalFrom(""); setLocalTo(""); onClose(); }} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">Clear</Button>
+          <Button onClick={() => { onChange(localFrom, localTo); onClose(); }} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold">Apply Filter</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -248,58 +248,28 @@ function AddVideosDialog({ open, onClose, excludeIds, allVideos, playlistId, onA
   excludeIds: number[];
   allVideos: Content[];
   playlistId?: number;
-  onAdd: (ids: number[]) => void;
+  onAdd: (selectedIds: number[]) => void;
 }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
-  const [apiAvailable, setApiAvailable] = useState<Content[] | null>(null);
 
-  useEffect(() => {
-    if (open && playlistId) {
-      getAvailableVideosForPlaylist(playlistId, { search })
-        .then((res) => {
-          const mapped: Content[] = res.data.map((item) => ({
-            id: item.id,
-            title: item.title,
-            type: "Video",
-            category: item.category || "Uncategorized",
-            status: (item.status === "published" ? "Published" : item.status === "scheduled" ? "Scheduled" : "Draft") as any,
-            views: item.views !== undefined ? item.views.toString() : "0",
-            duration: item.duration || "0:00",
-            date: item.date || new Date().toISOString().split("T")[0],
-            premium: !!item.premium,
-            description: item.description || "",
-            tags: item.tags || [],
-            thumbnailUrl: item.thumbnailUrl,
-            captionsData: item.captionsData,
-            captionUrl: item.captionUrl,
-            captionSrclang: item.captionSrclang,
-            captionLabel: item.captionLabel,
-            downloadUrls: item.downloadUrls,
-          }));
-          setApiAvailable(mapped);
-        })
-        .catch((err) => {
-          console.warn("Failed to fetch available videos for playlist", err);
-          setApiAvailable(null);
-        });
-    } else {
-      setApiAvailable(null);
-    }
-  }, [open, playlistId, search]);
+  const available = allVideos.filter((v) => {
+    if (excludeIds.includes(v.id)) return false;
+    if (search && !v.title.toLowerCase().includes(search.toLowerCase()) && !v.category.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
-  const available = apiAvailable !== null
-    ? apiAvailable
-    : allVideos.filter(
-      (c) => !excludeIds.includes(c.id) &&
-        c.title.toLowerCase().includes(search.toLowerCase())
-    );
-
-  const toggle = (id: number) =>
+  const toggle = (id: number) => {
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
 
-  const toggleAll = () =>
-    setSelected(selected.length === available.length ? [] : available.map((v) => v.id));
+  const toggleAll = () => {
+    if (selected.length === available.length) {
+      setSelected([]);
+    } else {
+      setSelected(available.map((v) => v.id));
+    }
+  };
 
   const handleAdd = () => {
     onAdd(selected);
@@ -310,65 +280,65 @@ function AddVideosDialog({ open, onClose, excludeIds, allVideos, playlistId, onA
 
   return (
     <Dialog open={open} onOpenChange={() => { setSelected([]); setSearch(""); onClose(); }}>
-      <DialogContent className="max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+      <DialogContent className="max-w-xl bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Add Videos to Playlist</DialogTitle>
-          <DialogDescription>Select one or more videos to add</DialogDescription>
+          <DialogTitle className="text-slate-900 font-bold text-lg">Add Videos to Playlist</DialogTitle>
+          <DialogDescription className="text-slate-500 text-xs">Select one or more videos to add</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input placeholder="Search videos..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder="Search videos..." className="pl-9 bg-white border-slate-200 text-slate-900 rounded-xl placeholder:text-slate-400" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
 
           {available.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-slate-500 pb-1 border-b">
+            <div className="flex items-center gap-2 text-xs text-slate-600 pb-2 border-b border-slate-100">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded accent-purple-600"
+                className="h-4 w-4 rounded accent-slate-900 cursor-pointer"
                 checked={selected.length === available.length && available.length > 0}
                 onChange={toggleAll}
               />
-              <span>Select all ({available.length})</span>
-              {selected.length > 0 && <span className="text-purple-600 font-medium ml-auto">{selected.length} selected</span>}
+              <span className="font-medium">Select all ({available.length})</span>
+              {selected.length > 0 && <span className="text-slate-900 font-bold ml-auto">{selected.length} selected</span>}
             </div>
           )}
 
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {available.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">
-                {search ? "No matching videos" : "No more videos to add"}
+              <p className="text-xs text-slate-400 text-center py-8">
+                {search ? "No matching videos found" : "No more videos available to add"}
               </p>
             ) : (
               available.map((v) => (
-                <label key={v.id} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${selected.includes(v.id) ? "border-purple-500 bg-purple-50" : "border-slate-200 hover:border-purple-300 hover:bg-slate-50"}`}>
+                <label key={v.id} className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-colors ${selected.includes(v.id) ? "border-slate-900 bg-slate-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"}`}>
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded accent-purple-600 flex-shrink-0"
+                    className="h-4 w-4 rounded accent-slate-900 flex-shrink-0 cursor-pointer"
                     checked={selected.includes(v.id)}
                     onChange={() => toggle(v.id)}
                   />
-                  <div className="h-10 w-16 rounded bg-slate-900 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                  <div className="h-10 w-16 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                     {v.thumbnailUrl ? (
                       <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
                     ) : (
-                      <Video className="h-4 w-4 text-purple-400" />
+                      <Video className="h-4 w-4 text-slate-400" />
                     )}
-                    <span className="absolute bottom-0.5 right-0.5 text-white text-[10px] bg-black/70 px-1 rounded">{v.duration}</span>
+                    <span className="absolute bottom-0.5 right-0.5 text-white text-[9px] bg-black/80 px-1 rounded font-mono">{v.duration}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{v.title}</div>
-                    <div className="text-xs text-slate-500">{v.category} · {v.date}</div>
+                    <div className="text-xs font-semibold text-slate-900 truncate">{v.title}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{v.category} · {v.date}</div>
                   </div>
-                  <Badge variant={v.status === "Published" ? "default" : "secondary"} className="text-xs flex-shrink-0">{v.status}</Badge>
+                  <Badge variant="outline" className="text-[10px] font-medium text-slate-700 bg-slate-100 border-slate-200 flex-shrink-0">{v.status}</Badge>
                 </label>
               ))
             )}
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { setSelected([]); setSearch(""); onClose(); }}>Cancel</Button>
-          <Button disabled={selected.length === 0} onClick={handleAdd} className="gap-2 bg-slate-900 text-white hover:bg-slate-800">
+        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-100">
+          <Button variant="outline" onClick={() => { setSelected([]); setSearch(""); onClose(); }} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">Cancel</Button>
+          <Button disabled={selected.length === 0} onClick={handleAdd} className="gap-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-xs font-semibold shadow-xs disabled:opacity-40">
             <Plus className="h-4 w-4" />Add Videos ({selected.length})
           </Button>
         </DialogFooter>
@@ -384,37 +354,37 @@ function SelectPlaylistDialog({ open, onClose, playlists, selected, onToggle }: 
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+      <DialogContent className="max-w-sm bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Add to Playlist</DialogTitle>
-          <DialogDescription>Select one or more playlists for this video</DialogDescription>
+          <DialogTitle className="text-slate-900 font-bold text-base">Add to Playlist</DialogTitle>
+          <DialogDescription className="text-slate-500 text-xs">Select one or more playlists for this video</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 max-h-64 overflow-y-auto py-1">
+        <div className="space-y-2 max-h-64 overflow-y-auto py-1 pr-1">
           {playlists.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">No playlists yet</p>
+            <p className="text-xs text-slate-400 text-center py-6">No playlists created yet</p>
           ) : (
             playlists.map((pl) => (
-              <label key={pl.id} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${selected.includes(pl.id) ? "border-purple-500 bg-purple-50" : "border-slate-200 hover:bg-slate-50"}`}>
+              <label key={pl.id} className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-colors ${selected.includes(pl.id) ? "border-slate-900 bg-slate-50" : "border-slate-200 hover:bg-slate-50/50"}`}>
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded accent-purple-600 flex-shrink-0"
+                  className="h-4 w-4 rounded accent-slate-900 flex-shrink-0 cursor-pointer"
                   checked={selected.includes(pl.id)}
                   onChange={() => onToggle(pl.id)}
                 />
-                <div className="h-10 w-14 rounded bg-slate-900 flex items-center justify-center flex-shrink-0">
-                  <ListVideo className="h-4 w-4 text-purple-400" />
+                <div className="h-10 w-14 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
+                  <ListVideo className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{pl.title}</div>
-                  <div className="text-xs text-slate-500">{pl.videos} videos</div>
+                  <div className="text-xs font-semibold text-slate-900 truncate">{pl.title}</div>
+                  <div className="text-[11px] text-slate-500">{pl.videos} videos</div>
                 </div>
               </label>
             ))
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onClose} className="bg-slate-900 text-white hover:bg-slate-800">Done ({selected.length} selected)</Button>
+        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-100">
+          <Button variant="outline" onClick={onClose} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">Cancel</Button>
+          <Button onClick={onClose} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-xs font-semibold shadow-xs">Done ({selected.length} selected)</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -639,41 +609,44 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
         onToggle={togglePlaylist}
       />
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit Content Details" : "Upload New Content"}</DialogTitle>
-            <DialogDescription>{isEdit ? "Update your content details below" : "Add new video asset to your platform"}</DialogDescription>
+            <DialogTitle className="text-slate-900 font-bold text-lg">{isEdit ? "Edit Content Details" : "Upload New Content"}</DialogTitle>
+            <DialogDescription className="text-slate-500 text-xs">{isEdit ? "Update your content details below" : "Add new video asset to your platform"}</DialogDescription>
           </DialogHeader>
 
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl font-medium">
+            <div className="p-3 text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded-xl font-medium">
               {error}
             </div>
           )}
 
           {uploadProgress !== null && (
-            <div className="p-3 text-xs bg-purple-50 border border-purple-200 rounded-xl space-y-1.5">
-              <div className="flex items-center justify-between font-semibold text-purple-900">
+            <div className="p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <div className="flex items-center justify-between font-semibold text-slate-900">
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-900" />
                   Streaming binary upload via TUS...
                 </span>
                 <span>{uploadProgress}%</span>
               </div>
-              <div className="w-full bg-purple-200 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-purple-600 h-full transition-all duration-300 rounded-full"
+                  className="bg-slate-900 h-full transition-all duration-300 rounded-full"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             </div>
           )}
 
-          <div className="space-y-5">
-            <div><Label>Title</Label><Input placeholder="Enter content title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" /></div>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 block mb-1">Title</Label>
+              <Input placeholder="Enter content title" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-slate-900 rounded-xl text-sm" />
+            </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <Label>Category</Label>
+                <Label className="text-xs font-semibold text-slate-700">Category</Label>
                 {dynamicCategories.length > 0 && (
                   <Button
                     type="button"
@@ -683,7 +656,7 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                       onClose();
                       navigate("/categories");
                     }}
-                    className="h-6 text-xs gap-1 text-purple-400 hover:text-purple-300 hover:bg-purple-950/40 px-2 py-0 font-medium"
+                    className="h-6 text-xs gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-2 py-0 font-medium rounded-lg cursor-pointer"
                   >
                     <Plus className="h-3 w-3" />
                     New Category
@@ -692,19 +665,19 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
               </div>
 
               {loadingCategories ? (
-                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 text-xs text-slate-400 mt-1">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-500" />
+                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 mt-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-900" />
                   Loading categories...
                 </div>
               ) : dynamicCategories.length === 0 ? (
-                <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-purple-500/40 bg-purple-950/20 text-xs text-slate-300 gap-3 mt-1">
-                  <span className="text-slate-300">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-700 gap-3 mt-1">
+                  <span>
                     No categories found. Please create a category first to organize your video content.
                   </span>
                   <Button
                     type="button"
                     size="sm"
-                    className="gap-1 bg-purple-600 hover:bg-purple-500 text-white shrink-0 font-medium h-8 text-xs shadow-md shadow-purple-600/30"
+                    className="gap-1 bg-slate-900 hover:bg-slate-800 text-white shrink-0 font-semibold h-8 text-xs rounded-xl shadow-xs cursor-pointer"
                     onClick={() => {
                       onClose();
                       navigate("/categories");
@@ -722,10 +695,10 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                     setCategory(matched ? matched.name : val);
                   }}
                 >
-                  <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+                  <SelectTrigger className="mt-1 bg-white border-slate-200 text-slate-900 rounded-xl">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900 rounded-xl shadow-xl">
                     {dynamicCategories.map((c) => (
                       <SelectItem key={c.id} value={c.name.toLowerCase()}>
                         {c.name}
@@ -735,9 +708,12 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                 </Select>
               )}
             </div>
-            <div><Label>Description</Label><Textarea placeholder="Enter content description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1" /></div>
             <div>
-              <Label>Thumbnails</Label>
+              <Label className="text-xs font-semibold text-slate-700 block mb-1">Description</Label>
+              <Textarea placeholder="Enter content description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-slate-900 rounded-xl resize-none text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-700 block">Thumbnails</Label>
               <p className="text-xs text-slate-500 mb-2">Upload custom thumbnail images.</p>
               <div className="grid grid-cols-3 gap-3">
                 <ThumbnailSlot
@@ -780,24 +756,24 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
               </div>
             </div>
             <div>
-              <Label>Tags</Label>
+              <Label className="text-xs font-semibold text-slate-700 block">Tags</Label>
               <p className="text-xs text-slate-500 mb-1.5">Help viewers discover your content</p>
               <TagInput tags={tags} setTags={setTags} />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label>Playlists</Label>
-                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setPlaylistPickerOpen(true)}>
+                <Label className="text-xs font-semibold text-slate-700">Playlists</Label>
+                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg shadow-xs cursor-pointer" onClick={() => setPlaylistPickerOpen(true)}>
                   <ListVideo className="h-3.5 w-3.5" />Add to Playlist
                 </Button>
               </div>
               {selectedPlaylists.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {playlists.filter((p) => selectedPlaylists.includes(p.id)).map((p) => (
-                    <span key={p.id} className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                    <span key={p.id} className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold px-2.5 py-1 rounded-lg">
                       {p.title}
-                      <button type="button" onClick={() => togglePlaylist(p.id)} className="hover:text-red-500"><X className="h-3 w-3" /></button>
+                      <button type="button" onClick={() => togglePlaylist(p.id)} className="hover:text-rose-600 cursor-pointer"><X className="h-3 w-3" /></button>
                     </span>
                   ))}
                 </div>
@@ -808,7 +784,7 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
 
             {!isEdit && (
               <div>
-                <Label>Video File</Label>
+                <Label className="text-xs font-semibold text-slate-700 block mb-1">Video File</Label>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -826,9 +802,9 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                 />
 
                 {videoFile ? (
-                  <div className="mt-1.5 border-2 border-purple-200 bg-purple-50/60 rounded-xl p-4 flex items-center justify-between">
+                  <div className="mt-1.5 border border-slate-200 bg-slate-50 rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 rounded-lg bg-purple-600 flex items-center justify-center text-white flex-shrink-0">
+                      <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center text-white flex-shrink-0 shadow-xs">
                         <Video className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
@@ -840,7 +816,7 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                       variant="ghost"
                       size="sm"
                       type="button"
-                      className="text-slate-500 hover:text-red-600 hover:bg-red-50 h-8 px-2"
+                      className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 h-8 px-2 rounded-lg cursor-pointer"
                       onClick={() => setVideoFile(null)}
                     >
                       <X className="h-4 w-4 mr-1" /> Remove
@@ -860,11 +836,11 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                         }
                       }
                     }}
-                    className="mt-1.5 border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:border-purple-500 hover:bg-purple-50/30 transition-all cursor-pointer group block"
+                    className="mt-1.5 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center bg-slate-50/60 hover:border-slate-400 hover:bg-slate-100/50 transition-all cursor-pointer group block"
                   >
-                    <Upload className="h-10 w-10 mx-auto text-slate-400 group-hover:text-purple-600 mb-2 transition-colors" />
-                    <p className="text-sm font-medium text-slate-700 group-hover:text-purple-700 mb-1">Drag & drop your video file here</p>
-                    <p className="text-xs text-slate-400 mb-3">Supports MP4, MOV, AVI up to 4GB</p>
+                    <Upload className="h-9 w-9 mx-auto text-slate-400 group-hover:text-slate-700 mb-2 transition-colors" />
+                    <p className="text-sm font-semibold text-slate-800 group-hover:text-slate-900 mb-1">Drag & drop your video file here</p>
+                    <p className="text-xs text-slate-500 mb-3">Supports MP4, MOV, AVI up to 4GB</p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -873,9 +849,9 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
                         e.stopPropagation();
                         fileInputRef.current?.click();
                       }}
-                      className="bg-white hover:bg-slate-100 border-slate-300 text-slate-800 font-medium shadow-xs"
+                      className="bg-white hover:bg-slate-50 border-slate-200 text-slate-800 font-semibold shadow-xs rounded-xl text-xs"
                     >
-                      <FolderOpen className="h-3.5 w-3.5 mr-1.5 text-purple-600" /> Browse Files
+                      <FolderOpen className="h-3.5 w-3.5 mr-1.5 text-slate-600" /> Browse Files
                     </Button>
                   </div>
                 )}
@@ -883,30 +859,36 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
             )}
 
             {scheduleMode && (
-              <div className="border border-purple-200 bg-purple-50 rounded-xl p-4 space-y-3">
+              <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-purple-700 font-medium text-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs">
                     <Calendar className="h-4 w-4" />Schedule Publishing Date
                   </div>
-                  <button type="button" onClick={() => setScheduleMode(false)} className="text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => setScheduleMode(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Date</Label><Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-1" /></div>
-                  <div><Label>Time</Label><Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1" /></div>
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-700">Date</Label>
+                    <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-1 bg-white border-slate-200 text-slate-900 rounded-xl" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-700">Time</Label>
+                    <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1 bg-white border-slate-200 text-slate-900 rounded-xl" />
+                  </div>
                 </div>
               </div>
             )}
           </div>
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="mt-4 gap-2 border-t border-slate-100 pt-3">
             {isEdit ? (
               <>
-                <Button variant="outline" onClick={onClose} disabled={submitting}>
+                <Button variant="outline" onClick={onClose} disabled={submitting} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">
                   Cancel
                 </Button>
                 <Button
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-medium px-5 cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs px-5 shadow-xs cursor-pointer"
                   onClick={() => handleSave(content?.status || "published")}
                   disabled={submitting}
                 >
@@ -916,32 +898,32 @@ function UploadEditDialog({ open, onClose, isEdit = false, content, playlists, o
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-                <Button variant="outline" onClick={() => handleSave("draft")} disabled={submitting}>
+                <Button variant="outline" onClick={onClose} disabled={submitting} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">Cancel</Button>
+                <Button variant="outline" onClick={() => handleSave("draft")} disabled={submitting} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save as Draft"}
                 </Button>
                 {scheduleMode ? (
                   <Button
                     disabled={!scheduleDate || !scheduleTime || submitting}
                     onClick={() => handleSave("scheduled")}
-                    className="gap-2 bg-slate-900 text-white hover:bg-slate-800"
+                    className="gap-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-xs font-semibold shadow-xs"
                   >
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
                     Confirm Schedule
                   </Button>
                 ) : (
                   <div className="flex">
-                    <Button className="rounded-r-none bg-slate-900 hover:bg-slate-800 text-white" onClick={() => handleSave("published")} disabled={submitting}>
+                    <Button className="rounded-r-none bg-slate-900 hover:bg-slate-800 text-white rounded-l-xl text-xs font-semibold shadow-xs" onClick={() => handleSave("published")} disabled={submitting}>
                       {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish"}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild disabled={submitting}>
-                        <Button className="rounded-l-none px-2 bg-slate-950 hover:bg-black text-white border-l border-slate-800"><ChevronDown className="h-4 w-4" /></Button>
+                        <Button className="rounded-l-none px-2 bg-slate-900 hover:bg-slate-800 text-white border-l border-slate-700 rounded-r-xl"><ChevronDown className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSave("published")}><Video className="mr-2 h-4 w-4" />Publish Now</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setScheduleMode(true)}><Clock className="mr-2 h-4 w-4" />Schedule Publish</DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="bg-white border-slate-200 text-slate-900 rounded-xl shadow-xl">
+                        <DropdownMenuItem onClick={() => handleSave("published")} className="cursor-pointer hover:bg-slate-50"><Video className="mr-2 h-4 w-4" />Publish Now</DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-slate-100" />
+                        <DropdownMenuItem onClick={() => setScheduleMode(true)} className="cursor-pointer hover:bg-slate-50"><Clock className="mr-2 h-4 w-4" />Schedule Publish</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -1196,26 +1178,26 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
         onAdd={handleAddVideos}
       />
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl backdrop-blur-xl">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-100">
+            <DialogTitle className="text-xl font-bold text-slate-900">
               {isEdit ? "Edit Playlist Details" : "Create New Playlist"}
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-slate-500 text-xs">
               {isEdit ? "Update playlist info, thumbnail image, and manage video collection" : "Create a new structured video collection"}
             </DialogDescription>
           </DialogHeader>
 
           {loadingData ? (
-            <div className="py-12 flex items-center justify-center gap-3 text-purple-400">
-              <Loader2 className="h-6 w-6 animate-spin" />
-              <span className="text-sm font-medium text-slate-300">Fetching playlist details...</span>
+            <div className="py-12 flex items-center justify-center gap-3 text-slate-700">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+              <span className="text-sm font-medium text-slate-600">Fetching playlist details...</span>
             </div>
           ) : (
             <div className="space-y-5 py-2">
               {/* Thumbnail Section */}
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Playlist Thumbnail</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 block">Playlist Thumbnail</Label>
                 <input
                   type="file"
                   ref={bannerFileRef}
@@ -1225,20 +1207,20 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
                 />
 
                 {thumbnailUrl ? (
-                  <div className="relative border border-slate-800 bg-slate-950 rounded-2xl h-44 overflow-hidden group shadow-lg">
+                  <div className="relative border border-slate-200 bg-slate-100 rounded-2xl h-44 overflow-hidden group shadow-xs">
                     <img src={thumbnailUrl} alt="Playlist thumbnail" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     <div
                       onClick={() => bannerFileRef.current?.click()}
-                      className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 font-semibold text-xs cursor-pointer backdrop-blur-xs"
+                      className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 font-semibold text-xs cursor-pointer backdrop-blur-xs"
                     >
                       {uploadingBanner ? (
                         <>
-                          <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
+                          <Loader2 className="h-7 w-7 animate-spin text-white" />
                           <span>Uploading Thumbnail...</span>
                         </>
                       ) : (
                         <>
-                          <div className="h-10 w-10 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg">
+                          <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center shadow-xs">
                             <ImagePlus className="h-5 w-5 text-white" />
                           </div>
                           <span>Change Playlist Thumbnail</span>
@@ -1251,20 +1233,20 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
                     type="button"
                     onClick={() => bannerFileRef.current?.click()}
                     disabled={uploadingBanner}
-                    className="w-full border-2 border-dashed border-slate-800 bg-slate-950/60 hover:bg-slate-950 hover:border-purple-500/80 rounded-2xl h-36 flex flex-col items-center justify-center cursor-pointer transition-all group p-4 text-center"
+                    className="w-full border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-400 rounded-2xl h-36 flex flex-col items-center justify-center cursor-pointer transition-all group p-4 text-center"
                   >
                     {uploadingBanner ? (
                       <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
-                        <span className="text-xs text-slate-300">Uploading Thumbnail...</span>
+                        <Loader2 className="h-7 w-7 animate-spin text-slate-900" />
+                        <span className="text-xs text-slate-600">Uploading Thumbnail...</span>
                       </div>
                     ) : (
                       <>
-                        <div className="h-10 w-10 rounded-full bg-purple-950/80 border border-purple-800/60 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                          <ImagePlus className="h-5 w-5 text-purple-400" />
+                        <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                          <ImagePlus className="h-5 w-5 text-slate-600" />
                         </div>
-                        <p className="text-xs text-slate-200 group-hover:text-purple-400 font-semibold">Click to upload playlist thumbnail</p>
-                        <p className="text-[11px] text-slate-500 mt-1">Recommended resolution: 1280×720 (16:9 ratio)</p>
+                        <p className="text-xs text-slate-700 font-semibold">Click to upload playlist thumbnail</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Recommended resolution: 1280×720 (16:9 ratio)</p>
                       </>
                     )}
                   </button>
@@ -1273,24 +1255,24 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
 
               {/* Title Input */}
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Title</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Title</Label>
                 <Input
                   placeholder="e.g. React Masterclass Series"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-purple-500"
+                  className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-slate-900 rounded-xl text-xs h-10"
                 />
               </div>
 
               {/* Description Input */}
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Description</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 block">Description</Label>
                 <Textarea
                   placeholder="Describe what this playlist covers..."
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-purple-500 resize-none"
+                  className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-slate-900 rounded-xl text-xs resize-none"
                 />
               </div>
 
@@ -1298,28 +1280,28 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
               <div>
                 <div className="flex items-center justify-between mb-2.5">
                   <div>
-                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">
                       Playlist Videos ({displayedVideos.length})
                     </Label>
-                    <span className="text-[11px] text-slate-500 font-normal">
+                    <span className="text-[11px] text-slate-400 font-normal">
                       Drag handle or use arrows to change order
                     </span>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 h-8 text-xs bg-slate-950 border-slate-800 hover:bg-slate-800 text-slate-200 cursor-pointer"
+                    className="gap-1.5 h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg cursor-pointer"
                     onClick={() => setAddVideosOpen(true)}
                   >
-                    <Plus className="h-3.5 w-3.5 text-purple-400" /> Add Videos
+                    <Plus className="h-3.5 w-3.5 text-white" /> Add Videos
                   </Button>
                 </div>
 
                 {displayedVideos.length === 0 ? (
-                  <div className="border border-dashed border-slate-800 rounded-xl p-6 text-center bg-slate-950/60">
-                    <Video className="h-8 w-8 mx-auto mb-2 text-slate-600" />
-                    <p className="text-xs text-slate-400 font-medium">No videos added to this playlist yet</p>
-                    <Button variant="link" size="sm" className="text-xs text-purple-400 mt-1 cursor-pointer" onClick={() => setAddVideosOpen(true)}>
+                  <div className="border border-dashed border-slate-200 rounded-xl p-6 text-center bg-slate-50">
+                    <Video className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-xs text-slate-500 font-medium">No videos added to this playlist yet</p>
+                    <Button variant="link" size="sm" className="text-xs text-slate-900 font-medium hover:underline mt-1 cursor-pointer" onClick={() => setAddVideosOpen(true)}>
                       Add videos now
                     </Button>
                   </div>
@@ -1345,30 +1327,30 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
                           setDraggedIndex(null);
                         }}
                         onDragEnd={() => setDraggedIndex(null)}
-                        className={`flex items-center gap-2.5 p-2.5 bg-slate-950/80 rounded-xl border transition-all group ${draggedIndex === index
-                          ? "border-purple-500 bg-purple-950/40 opacity-50"
-                          : "border-slate-800/80 hover:border-slate-700"
+                        className={`flex items-center gap-2.5 p-2.5 bg-white rounded-xl border transition-all group ${draggedIndex === index
+                          ? "border-slate-400 bg-slate-50 opacity-50"
+                          : "border-slate-200 hover:border-slate-300 shadow-xs"
                           }`}
                       >
                         {/* Drag Handle & Order */}
-                        <div className="flex items-center gap-1.5 text-slate-500">
-                          <GripVertical className="h-4 w-4 text-slate-500 cursor-grab hover:text-purple-400 transition-colors" />
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <GripVertical className="h-4 w-4 text-slate-400 cursor-grab hover:text-slate-700 transition-colors" />
                           <span className="w-5 text-center text-xs font-mono font-bold text-slate-500">#{index + 1}</span>
                         </div>
 
                         {/* Thumbnail */}
-                        <div className="h-10 w-16 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0 relative">
+                        <div className="h-10 w-16 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0 relative">
                           {v.thumbnailUrl ? (
                             <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
                           ) : (
-                            <Video className="h-4 w-4 text-purple-400 opacity-70" />
+                            <Video className="h-4 w-4 text-slate-400 opacity-70" />
                           )}
                           <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-[9px] text-white px-1 rounded font-mono">{v.duration}</span>
                         </div>
 
                         {/* Title & Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-slate-200 truncate group-hover:text-purple-400 transition-colors">{v.title}</div>
+                          <div className="text-xs font-semibold text-slate-800 truncate">{v.title}</div>
                           <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                             <span>{v.category}</span>
                             <span>•</span>
@@ -1382,7 +1364,7 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
                             type="button"
                             disabled={index === 0}
                             onClick={() => moveVideo(index, index - 1)}
-                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-slate-800 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
                             title="Move video up"
                           >
                             <ArrowUp className="h-3.5 w-3.5" />
@@ -1392,7 +1374,7 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
                             type="button"
                             disabled={index === displayedVideos.length - 1}
                             onClick={() => moveVideo(index, index + 1)}
-                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-slate-800 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
                             title="Move video down"
                           >
                             <ArrowDown className="h-3.5 w-3.5" />
@@ -1401,7 +1383,7 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
                           <button
                             type="button"
                             onClick={() => handleRemoveVideo(v.id)}
-                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 flex items-center justify-center transition-colors cursor-pointer ml-0.5"
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer ml-0.5"
                             title="Remove video from playlist"
                           >
                             <X className="h-4 w-4" />
@@ -1415,11 +1397,11 @@ function PlaylistMetaDialog({ open, onClose, playlist, allVideos, onSaveSuccess 
             </div>
           )}
 
-          <DialogFooter className="mt-4 pt-3 border-t border-slate-800/80">
-            <Button variant="outline" onClick={onClose} disabled={submitting} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 cursor-pointer">
+          <DialogFooter className="mt-4 pt-3 border-t border-slate-100">
+            <Button variant="outline" onClick={onClose} disabled={submitting} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={submitting || !title.trim()} className="bg-purple-600 hover:bg-purple-500 text-white font-medium cursor-pointer">
+            <Button onClick={handleSave} disabled={submitting || !title.trim()} className="bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-xl shadow-xs cursor-pointer">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Create Playlist"}
             </Button>
           </DialogFooter>
@@ -2018,18 +2000,18 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl text-white rounded-2xl [&>button:last-child]:hidden">
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white border border-slate-200 shadow-2xl text-slate-900 rounded-2xl [&>button:last-child]:hidden">
         {/* YouTube Studio Header Bar */}
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800">
+        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200">
           <div className="flex items-center gap-2.5 min-w-0 pr-4">
-            <div className="h-7 w-7 rounded-lg bg-purple-950/80 border border-purple-800 flex items-center justify-center flex-shrink-0">
-              <Video className="h-3.5 w-3.5 text-purple-400" />
+            <div className="h-7 w-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
+              <Video className="h-3.5 w-3.5 text-slate-700" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-sm font-bold text-white truncate leading-tight">
+              <DialogTitle className="text-sm font-bold text-slate-900 truncate leading-tight">
                 {activeContent.title}
               </DialogTitle>
-              <DialogDescription className="text-[11px] text-slate-400 truncate">
+              <DialogDescription className="text-[11px] text-slate-500 truncate">
                 {activeContent.category || "Video Preview"} · {activeContent.date || "Video Details"}
               </DialogDescription>
             </div>
@@ -2039,16 +2021,16 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
             <button
               type="button"
               onClick={handleToggleFullscreen}
-              className="h-7 w-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer"
               title={isFullscreen ? "Exit Fullscreen (Esc)" : "Fullscreen"}
             >
-              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-purple-400" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-slate-900" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              className="h-7 w-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer"
               title="Close Preview (Esc)"
             >
               <X className="h-4 w-4" />
@@ -2060,19 +2042,19 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
         <div ref={playerContainerRef} className="flex-shrink-0 relative w-full bg-black flex items-center justify-center overflow-hidden min-h-[180px] max-h-[35vh]" style={{ aspectRatio: videoAspectRatio }}>
           {loadingStream ? (
             <div className="flex flex-col items-center justify-center space-y-3 text-slate-400">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-500 text-xs font-medium" />
-              <p className="text-xs font-medium">Fetching original stream URL from server...</p>
+              <Loader2 className="h-8 w-8 animate-spin text-white text-xs font-medium" />
+              <p className="text-xs font-medium text-slate-300">Fetching original stream URL from server...</p>
             </div>
           ) : playbackError || !videoSrc ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-900 border border-red-900/50 rounded-xl max-w-md mx-auto my-8 space-y-3">
-              <div className="h-12 w-12 rounded-full bg-red-950/80 border border-red-800 flex items-center justify-center">
-                <AlertCircle className="h-6 w-6 text-red-500" />
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-900 border border-slate-800 rounded-xl max-w-md mx-auto my-8 space-y-3">
+              <div className="h-12 w-12 rounded-full bg-rose-950/80 border border-rose-800 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-rose-500" />
               </div>
               <div>
                 <h3 className="font-bold text-lg text-white">Something went wrong</h3>
                 <p className="text-sm text-slate-400 mt-1">Unable to play video asset. The original video URL is missing or media server is unreachable.</p>
               </div>
-              <Button variant="outline" size="sm" className="bg-slate-800 hover:bg-slate-700 text-white border-slate-700 text-xs mt-2" onClick={() => setPlaybackError(false)}>
+              <Button variant="outline" size="sm" className="bg-white hover:bg-slate-100 text-slate-900 border-slate-200 text-xs mt-2" onClick={() => setPlaybackError(false)}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try Again
               </Button>
             </div>
@@ -2090,11 +2072,11 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
         </div>
 
         {/* Controls & Metadata Footer - Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-900 border-t border-slate-800 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-white border-t border-slate-200 custom-scrollbar">
           <div className="flex flex-col md:flex-row items-start justify-between gap-4">
             {/* Category & Tags on the left */}
             <div className="flex-1 space-y-2">
-              <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 {activeContent.category || "Uncategorized"}
               </h4>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -2104,13 +2086,13 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                     <Badge
                       key={t}
                       variant="outline"
-                      className="bg-purple-950/70 border-purple-800/60 text-purple-300 text-xs px-2.5 py-0.5 rounded-full"
+                      className="bg-slate-100 border-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-medium"
                     >
                       #{t.replace(/^#/, "")}
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-500 italic">No tags attached</span>
+                  <span className="text-xs text-slate-400 italic">No tags attached</span>
                 )}
               </div>
             </div>
@@ -2122,11 +2104,11 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                   <Button
                     onClick={() => setIsDownloadMenuOpen((prev) => !prev)}
                     disabled={!videoSrc || downloading}
-                    className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs px-3.5 h-9 rounded-xl shadow-lg cursor-pointer transition-all disabled:opacity-50"
+                    className="gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 h-9 rounded-xl shadow-xs cursor-pointer transition-all disabled:opacity-50"
                   >
                     {downloading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin text-purple-200" />
+                        <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
                         <span>{downloadProgress !== null ? `${downloadProgress}%` : "Downloading..."}</span>
                       </>
                     ) : (
@@ -2139,10 +2121,10 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                   </Button>
 
                   {isDownloadMenuOpen && (
-                    <div className="absolute right-0 bottom-full mb-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl backdrop-blur-xl py-1 z-50 text-xs text-slate-200">
-                      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                    <div className="absolute right-0 bottom-full mb-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-50 text-xs text-slate-700">
+                      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
                         <span>Select MP4 Resolution</span>
-                        <Download className="h-3 w-3 text-purple-400" />
+                        <Download className="h-3 w-3 text-slate-500" />
                       </div>
                       {activeContent.downloadUrls.map((item) => (
                         <button
@@ -2153,22 +2135,22 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                             const cleanTitle = (activeContent.title || "video").replace(/[^a-z0-9]/gi, "_");
                             handleDownloadTarget(item.url, `${cleanTitle}_${item.resolution || "hd"}.mp4`);
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-purple-950/50 hover:text-purple-300 transition-colors cursor-pointer"
+                          className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
                         >
-                          <span className="font-medium text-slate-200">{item.label || item.resolution}</span>
-                          <span className="text-[10px] font-mono text-purple-400 bg-purple-950 px-1.5 py-0.5 rounded border border-purple-800">
+                          <span className="font-medium text-slate-800">{item.label || item.resolution}</span>
+                          <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                             {item.resolution}
                           </span>
                         </button>
                       ))}
-                      <div className="border-t border-slate-800 mt-1 pt-1">
+                      <div className="border-t border-slate-100 mt-1 pt-1">
                         <button
                           type="button"
                           onClick={() => {
                             setIsDownloadMenuOpen(false);
                             handleDownload();
                           }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                          className="w-full text-left px-3 py-1.5 text-[11px] text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
                         >
                           Default Stream URL
                         </button>
@@ -2180,11 +2162,11 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                 <Button
                   onClick={handleDownload}
                   disabled={!videoSrc || downloading}
-                  className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs px-3.5 h-9 rounded-xl shadow-lg cursor-pointer transition-all disabled:opacity-50"
+                  className="gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 h-9 rounded-xl shadow-xs cursor-pointer transition-all disabled:opacity-50"
                 >
                   {downloading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin text-purple-200" />
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
                       <span>{downloadProgress !== null ? `${downloadProgress}%` : "Downloading..."}</span>
                     </>
                   ) : (
@@ -2204,48 +2186,48 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
               { label: "Duration", value: dynamicDuration || formatDuration(activeContent.duration, activeContent.id) },
               { label: "Access Tier", value: activeContent.premium ? "Premium" : "Free" },
             ].map((s) => (
-              <div key={s.label} className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-center">
-                <div className="font-bold text-base text-white">{s.value}</div>
-                <div className="text-xs text-slate-400">{s.label}</div>
+              <div key={s.label} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                <div className="font-bold text-base text-slate-900">{s.value}</div>
+                <div className="text-xs text-slate-500">{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Description Section at the bottom with full width and smooth scrollability */}
-          <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</h4>
-            <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words min-h-[80px] max-h-[220px] overflow-y-auto custom-scrollbar">
+          <div className="pt-2 border-t border-slate-100 space-y-1.5">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</h4>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words min-h-[80px] max-h-[220px] overflow-y-auto custom-scrollbar">
               {activeContent.description || "No description available for this video content."}
             </div>
           </div>
 
           {/* Comments & Discussion Section for Admin */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-3">
+          <div className="pt-3 border-t border-slate-100 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-purple-400" />
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <MessageSquare className="h-4 w-4 text-slate-600" />
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Comments & Discussion ({videoComments.length})
                 </h4>
               </div>
-              <span className="text-[11px] text-slate-500">Admin Comment Mode</span>
+              <span className="text-[11px] text-slate-400">Admin Comment Mode</span>
             </div>
 
             {/* Post Admin Comment Box */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
               <Textarea
                 placeholder="Write an official creator comment on this video..."
                 value={adminCommentText}
                 onChange={(e) => setAdminCommentText(e.target.value)}
-                className="bg-slate-900 border-slate-700/70 text-slate-200 text-xs focus:border-purple-500 min-h-[60px] resize-none"
+                className="bg-white border-slate-200 text-slate-900 text-xs focus:border-slate-900 min-h-[60px] resize-none rounded-xl"
               />
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[10px] text-slate-500 italic">Posted as Creator Admin</span>
+                <span className="text-[10px] text-slate-400 italic">Posted as Creator Admin</span>
                 <Button
                   size="sm"
                   disabled={!adminCommentText.trim() || postingAdminComment}
                   onClick={handlePostAdminComment}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs h-8 px-3 rounded-lg gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs h-8 px-3 rounded-lg gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {postingAdminComment ? (
                     <>
@@ -2266,20 +2248,20 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
             <div className="space-y-2.5 max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
               {loadingVideoComments ? (
                 <div className="flex items-center justify-center py-6 text-slate-400 gap-2 text-xs">
-                  <Loader2 className="h-4 w-4 animate-spin text-purple-500" /> Loading video comments...
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-900" /> Loading video comments...
                 </div>
               ) : videoComments.length === 0 ? (
-                <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800/60">
-                  <MessageSquare className="h-6 w-6 mx-auto mb-1.5 opacity-30 text-purple-400" />
-                  <p>No comments on this video yet.</p>
-                  <p className="text-[11px] text-slate-600">Be the first to post a creator comment above.</p>
+                <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                  <MessageSquare className="h-6 w-6 mx-auto mb-1.5 opacity-40 text-slate-400" />
+                  <p className="text-slate-600 font-medium">No comments on this video yet.</p>
+                  <p className="text-[11px] text-slate-400">Be the first to post a creator comment above.</p>
                 </div>
               ) : (
                 videoComments.map((comment) => (
-                  <div key={comment.id} className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 space-y-2 text-xs">
+                  <div key={comment.id} className="bg-white border border-slate-200 rounded-xl p-3 space-y-2 text-xs shadow-2xs">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-300 font-bold text-xs overflow-hidden">
+                        <div className="h-7 w-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-xs overflow-hidden">
                           {comment.userAvatar ? (
                             <img src={comment.userAvatar} alt={comment.userName} className="w-full h-full object-cover" />
                           ) : (
@@ -2287,13 +2269,13 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                           )}
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                          <div className="font-semibold text-slate-800 flex items-center gap-1.5">
                             <span>{comment.userName}</span>
-                            <Badge className="bg-purple-950/80 border-purple-800 text-purple-300 text-[10px] px-1.5 py-0">
+                            <Badge className="bg-slate-100 border-slate-200 text-slate-700 text-[10px] px-1.5 py-0 font-medium">
                               Creator
                             </Badge>
                           </div>
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-[10px] text-slate-400">
                             {new Date(comment.createdAt).toLocaleString()}
                           </div>
                         </div>
@@ -2302,29 +2284,29 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteComment(comment.id)}
-                        className="h-6 w-6 text-slate-400 hover:text-red-400 cursor-pointer"
+                        className="h-6 w-6 text-slate-400 hover:text-rose-600 cursor-pointer"
                         title="Delete comment"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
 
-                    <p className="text-slate-300 leading-relaxed ml-9 whitespace-pre-line">{comment.text}</p>
+                    <p className="text-slate-700 leading-relaxed ml-9 whitespace-pre-line">{comment.text}</p>
 
-                    <div className="flex items-center justify-between ml-9 text-[11px] text-slate-400 pt-1">
+                    <div className="flex items-center justify-between ml-9 text-[11px] text-slate-500 pt-1">
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
                           onClick={() => handleToggleLike(comment.id)}
-                          className={`flex items-center gap-1 transition-colors cursor-pointer ${comment.isLiked ? "text-purple-400 font-bold" : "hover:text-purple-300"}`}
+                          className={`flex items-center gap-1 transition-colors cursor-pointer ${comment.isLiked ? "text-rose-600 font-bold" : "hover:text-slate-900 text-slate-500"}`}
                         >
-                          <Heart className={`h-3.5 w-3.5 ${comment.isLiked ? "fill-purple-500 text-purple-500" : ""}`} />
+                          <Heart className={`h-3.5 w-3.5 ${comment.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
                           {comment.likes}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleToggleReplies(comment.id)}
-                          className="flex items-center gap-1 hover:text-purple-300 transition-colors cursor-pointer"
+                          className="flex items-center gap-1 hover:text-slate-900 text-slate-500 transition-colors cursor-pointer"
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
                           {comment.replyCount}
@@ -2337,7 +2319,7 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                           setReplyOpenId(replyOpenId === comment.id ? null : comment.id);
                           setReplyText("");
                         }}
-                        className="flex items-center gap-1 text-purple-400 hover:text-purple-300 font-medium cursor-pointer"
+                        className="flex items-center gap-1 text-slate-700 hover:text-slate-900 font-semibold cursor-pointer"
                       >
                         <CornerDownRight className="h-3 w-3" /> Reply
                       </button>
@@ -2350,18 +2332,18 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                           placeholder={`Reply to ${comment.userName}...`}
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
-                          className="bg-slate-900 border-slate-700 text-slate-200 h-8 text-xs"
+                          className="bg-white border-slate-200 text-slate-900 h-8 text-xs rounded-lg"
                           autoFocus
                         />
                         <Button
                           size="sm"
                           disabled={!replyText.trim() || submittingReply}
                           onClick={() => handleSendReply(comment.id)}
-                          className="bg-purple-600 hover:bg-purple-500 text-white h-8 px-2.5 cursor-pointer"
+                          className="bg-slate-900 hover:bg-slate-800 text-white h-8 px-2.5 rounded-lg cursor-pointer"
                         >
                           {submittingReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 cursor-pointer" onClick={() => { setReplyOpenId(null); setReplyText(""); }}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => { setReplyOpenId(null); setReplyText(""); }}>
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -2369,45 +2351,45 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
 
                     {/* Replies Thread */}
                     {openRepliesId === comment.id && (
-                      <div className="mt-2 ml-9 pt-2 border-t border-slate-700/50 space-y-1.5">
+                      <div className="mt-2 ml-9 pt-2 border-t border-slate-100 space-y-1.5">
                         {loadingReplies ? (
                           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 py-1">
-                            <Loader2 className="h-3 w-3 animate-spin text-purple-400" /> Loading replies...
+                            <Loader2 className="h-3 w-3 animate-spin text-slate-900" /> Loading replies...
                           </div>
                         ) : (repliesCache[comment.id] || []).length === 0 ? (
-                          <p className="text-[11px] text-slate-500 py-0.5 italic">No replies in this thread yet.</p>
+                          <p className="text-[11px] text-slate-400 py-0.5 italic">No replies in this thread yet.</p>
                         ) : (
                           (repliesCache[comment.id] || []).map((reply) => {
                             const isSubReplyOpen = replyOpenId === `reply-${reply.id}`;
                             return (
-                              <div key={reply.id} className="bg-slate-900/60 p-2 rounded-lg text-[11px] space-y-1 border border-slate-800/60">
+                              <div key={reply.id} className="bg-slate-50 p-2.5 rounded-lg text-[11px] space-y-1 border border-slate-200">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-semibold text-purple-300 flex items-center gap-1">
+                                    <span className="font-semibold text-slate-800 flex items-center gap-1">
                                       {reply.userName}
                                       {reply.isCreator && (
-                                        <Badge className="bg-purple-950/80 border-purple-800 text-purple-300 text-[9px] px-1 py-0">
+                                        <Badge className="bg-slate-200/80 border-slate-300 text-slate-800 text-[9px] px-1 py-0">
                                           Creator
                                         </Badge>
                                       )}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[9px] text-slate-500">{new Date(reply.createdAt).toLocaleDateString()}</span>
+                                    <span className="text-[9px] text-slate-400">{new Date(reply.createdAt).toLocaleDateString()}</span>
                                   </div>
                                 </div>
 
-                                <p className="text-slate-300 whitespace-pre-line">{reply.text}</p>
+                                <p className="text-slate-700 whitespace-pre-line">{reply.text}</p>
 
                                 {/* Subcomment stats and reply button bar */}
-                                <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+                                <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500">
                                   <div className="flex items-center gap-3">
                                     <button
                                       type="button"
                                       onClick={() => handleToggleReplyLike(comment.id, reply.id)}
-                                      className={`flex items-center gap-1 font-medium transition-colors cursor-pointer ${reply.isLiked ? "text-purple-400" : "hover:text-purple-400"}`}
+                                      className={`flex items-center gap-1 font-medium transition-colors cursor-pointer ${reply.isLiked ? "text-rose-600" : "hover:text-slate-900 text-slate-500"}`}
                                     >
-                                      <Heart className={`h-3 w-3 ${reply.isLiked ? "fill-purple-400 text-purple-400" : ""}`} />
+                                      <Heart className={`h-3 w-3 ${reply.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
                                       {reply.likes || 0}
                                     </button>
                                   </div>
@@ -2423,7 +2405,7 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                                         setReplyText(`@${reply.userName} `);
                                       }
                                     }}
-                                    className="text-purple-400 hover:text-purple-300 font-medium flex items-center gap-0.5 cursor-pointer text-[10px]"
+                                    className="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-0.5 cursor-pointer text-[10px]"
                                   >
                                     <CornerDownRight className="h-2.5 w-2.5" /> Reply
                                   </button>
@@ -2436,21 +2418,21 @@ function VideoPlayerDialog({ open, onClose, content, onPlaybackError }: {
                                       placeholder={`Reply to ${reply.userName}...`}
                                       value={replyText}
                                       onChange={(e) => setReplyText(e.target.value)}
-                                      className="bg-slate-950 border-slate-700 text-slate-200 h-7 text-[11px]"
+                                      className="bg-white border-slate-200 text-slate-900 h-7 text-[11px] rounded-lg"
                                       autoFocus
                                     />
                                     <Button
                                       size="sm"
                                       disabled={!replyText.trim() || submittingReply}
                                       onClick={() => handleSendReply(comment.id, reply.id)}
-                                      className="bg-purple-600 hover:bg-purple-500 text-white h-7 px-2 text-[11px] cursor-pointer"
+                                      className="bg-slate-900 hover:bg-slate-800 text-white h-7 px-2 text-[11px] rounded-lg cursor-pointer"
                                     >
                                       {submittingReply ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-7 w-7 p-0 text-slate-400 cursor-pointer"
+                                      className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600 cursor-pointer"
                                       onClick={() => { setReplyOpenId(null); setReplyText(""); }}
                                     >
                                       <X className="h-3 w-3" />
@@ -2481,30 +2463,30 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
   if (!content) return null;
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl">
+      <DialogContent className="max-w-2xl bg-white border border-slate-200 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{content.title}</DialogTitle>
-          <DialogDescription>Content details & metadata</DialogDescription>
+          <DialogTitle className="text-xl font-bold text-slate-900">{content.title}</DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">Content details & metadata</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div
-            className="relative h-48 w-full rounded-xl bg-slate-950 flex items-center justify-center overflow-hidden cursor-pointer group"
+            className="relative h-48 w-full rounded-xl bg-slate-950 flex items-center justify-center overflow-hidden cursor-pointer group shadow-xs"
             onClick={() => { onClose(); onPlay(content); }}
           >
             {content.thumbnailUrl ? (
-              <img src={content.thumbnailUrl} alt={content.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+              <img src={content.thumbnailUrl} alt={content.title} className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity" />
             ) : (
-              <Video className="h-16 w-16 text-purple-400 opacity-50" />
+              <Video className="h-16 w-16 text-slate-400 opacity-50" />
             )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-              <div className="h-14 w-14 rounded-full bg-white/90 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
-                <Play className="h-7 w-7 text-purple-700 ml-1" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
+              <div className="h-14 w-14 rounded-full bg-white/95 flex items-center justify-center shadow-2xl group-hover:scale-105 transition-transform">
+                <Play className="h-7 w-7 text-slate-900 ml-1 fill-slate-900" />
               </div>
             </div>
             <div className="absolute top-3 left-3">
-              <Badge variant={content.status === "Published" ? "default" : content.status === "Draft" ? "secondary" : "outline"}>{content.status}</Badge>
+              <Badge variant="outline" className={content.status === "Published" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : content.status === "Draft" ? "bg-slate-100 text-slate-700 border-slate-200" : "bg-amber-50 text-amber-700 border-amber-200"}>{content.status}</Badge>
             </div>
-            <div className="absolute bottom-3 right-3 bg-black/80 text-white text-xs px-2 py-0.5 rounded">{content.duration}</div>
+            <div className="absolute bottom-3 right-3 bg-black/80 text-white text-xs px-2 py-0.5 rounded font-mono font-medium">{content.duration}</div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
@@ -2513,25 +2495,25 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
               { label: "Date Added", value: content.date },
             ].map((s) => (
               <div key={s.label} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                <div className="font-bold text-sm text-slate-800">{s.value}</div>
+                <div className="font-bold text-sm text-slate-900">{s.value}</div>
                 <div className="text-xs text-slate-500">{s.label}</div>
               </div>
             ))}
           </div>
           <div>
-            <Label className="text-xs text-slate-400 uppercase tracking-wide">Description</Label>
-            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{content.description || "No description provided."}</p>
+            <Label className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Description</Label>
+            <p className="mt-1 text-sm text-slate-700 leading-relaxed whitespace-pre-line">{content.description || "No description provided."}</p>
           </div>
 
           {/* Subtitles & Captions info */}
           {content.captionsData && content.captionsData.length > 0 && (
             <div>
-              <Label className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1 mb-1.5">
-                <Subtitles className="h-3.5 w-3.5 text-purple-400" /> Subtitles ({content.captionsData.length})
+              <Label className="text-xs text-slate-500 uppercase tracking-wide font-semibold flex items-center gap-1 mb-1.5">
+                <Subtitles className="h-3.5 w-3.5 text-slate-600" /> Subtitles ({content.captionsData.length})
               </Label>
               <div className="flex flex-wrap gap-1.5">
                 {content.captionsData.map((c, i) => (
-                  <Badge key={i} variant="outline" className="bg-purple-950/40 border-purple-800 text-purple-300 text-xs">
+                  <Badge key={i} variant="outline" className="bg-slate-100 border-slate-200 text-slate-700 text-xs">
                     {c.label || c.srclang || "Subtitles"}
                   </Badge>
                 ))}
@@ -2542,8 +2524,8 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
           {/* Download URLs info */}
           {content.downloadUrls && content.downloadUrls.length > 0 && (
             <div>
-              <Label className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1 mb-1.5">
-                <Download className="h-3.5 w-3.5 text-emerald-400" /> Download Qualities ({content.downloadUrls.length})
+              <Label className="text-xs text-slate-500 uppercase tracking-wide font-semibold flex items-center gap-1 mb-1.5">
+                <Download className="h-3.5 w-3.5 text-slate-600" /> Download Qualities ({content.downloadUrls.length})
               </Label>
               <div className="flex flex-wrap gap-1.5">
                 {content.downloadUrls.map((dl, i) => (
@@ -2552,7 +2534,7 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
                     href={dl.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 bg-emerald-950/40 border border-emerald-800 text-emerald-300 hover:text-white text-xs px-2.5 py-1 rounded-md transition-colors"
+                    className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-200 text-xs px-2.5 py-1 rounded-lg transition-colors font-medium"
                   >
                     <Download className="h-3 w-3" />
                     <span>{dl.label || dl.resolution}</span>
@@ -2564,13 +2546,13 @@ function ViewContentDialog({ open, onClose, content, onPlay }: {
 
           {content.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {content.tags.map((t) => <span key={t} className="bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs px-2.5 py-0.5 rounded-full">#{t}</span>)}
+              {content.tags.map((t) => <span key={t} className="bg-slate-100 border border-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-medium">#{t}</span>)}
             </div>
           )}
         </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button onClick={() => { onClose(); onPlay(content); }} className="gap-2 bg-slate-900 text-white hover:bg-slate-800">
+        <DialogFooter className="gap-2 pt-3 border-t border-slate-100">
+          <Button variant="outline" onClick={onClose} className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl">Close</Button>
+          <Button onClick={() => { onClose(); onPlay(content); }} className="gap-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-xs">
             <Play className="h-4 w-4 fill-white" />Play Video
           </Button>
         </DialogFooter>
@@ -2772,32 +2754,29 @@ function PlaylistDetailScreen({
       <div>
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-purple-400 transition-colors mb-2 group cursor-pointer"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors mb-2 group cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Back to Playlists
         </button>
       </div>
 
-      {/* ── YouTube-Style Playlist Hero Card at Top ── */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-slate-950/90 border border-slate-800/80 shadow-2xl backdrop-blur-xl p-6 md:p-8 overflow-hidden">
-        {/* Background ambient glow */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
+      {/* ── Playlist Hero Card at Top ── */}
+      <div className="relative rounded-2xl bg-white border border-slate-200/80 shadow-xs p-6 md:p-8 overflow-hidden">
         <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-10">
           {/* Playlist Thumbnail Container */}
-          <div className="relative group w-full md:w-72 h-44 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl flex-shrink-0 flex items-center justify-center">
+          <div className="relative group w-full md:w-72 h-44 rounded-2xl bg-slate-100 border border-slate-200/80 overflow-hidden shadow-xs flex-shrink-0 flex items-center justify-center">
             {currentThumbnail ? (
               <img src={currentThumbnail} alt={playlist.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             ) : (
-              <div className="flex flex-col items-center justify-center space-y-2 text-slate-500">
-                <ListVideo className="h-12 w-12 text-purple-400/60" />
-                <span className="text-xs font-medium text-slate-400">No Playlist Thumbnail</span>
+              <div className="flex flex-col items-center justify-center space-y-2 text-slate-400">
+                <ListVideo className="h-12 w-12 text-slate-400" />
+                <span className="text-xs font-medium text-slate-500">No Playlist Thumbnail</span>
               </div>
             )}
 
             {/* Video count badge */}
-            <div className="absolute bottom-2.5 right-2.5 bg-black/85 backdrop-blur-md text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/10 shadow-lg">
-              <ListVideo className="h-3.5 w-3.5 text-purple-400" />
+            <div className="absolute bottom-2.5 right-2.5 bg-slate-900/90 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-xs">
+              <ListVideo className="h-3.5 w-3.5 text-white" />
               <span>{videos.length} {videos.length === 1 ? "Video" : "Videos"}</span>
             </div>
 
@@ -2805,16 +2784,16 @@ function PlaylistDetailScreen({
             <button
               onClick={() => bannerInputRef.current?.click()}
               disabled={uploadingBanner}
-              className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 font-semibold text-xs backdrop-blur-xs cursor-pointer"
+              className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 font-semibold text-xs cursor-pointer"
             >
               {uploadingBanner ? (
                 <>
-                  <Loader2 className="h-7 w-7 animate-spin text-purple-400" />
+                  <Loader2 className="h-7 w-7 animate-spin text-white" />
                   <span>Uploading Thumbnail...</span>
                 </>
               ) : (
                 <>
-                  <div className="h-10 w-10 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center shadow-xs">
                     <ImagePlus className="h-5 w-5 text-white" />
                   </div>
                   <span>Change Playlist Thumbnail</span>
@@ -2827,24 +2806,24 @@ function PlaylistDetailScreen({
           <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch space-y-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-purple-400 bg-purple-950/80 border border-purple-800/60 px-3 py-0.5 rounded-full">
-                  <ListVideo className="h-3 w-3" /> Playlist Collection
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 border border-slate-200/80 px-3 py-0.5 rounded-full">
+                  <ListVideo className="h-3 w-3 text-slate-700" /> Playlist Collection
                 </span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight leading-tight">
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
                 {currentPlaylist.title}
               </h1>
-              <p className="text-sm text-slate-300 leading-relaxed max-w-3xl line-clamp-3">
+              <p className="text-sm text-slate-600 leading-relaxed max-w-3xl line-clamp-3">
                 {currentPlaylist.description || "No description provided for this playlist."}
               </p>
             </div>
 
-            <div className="space-y-4 pt-2 border-t border-slate-800/80">
-              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-400">
-                <span className="text-slate-200 font-semibold">{videos.length} video{videos.length !== 1 ? "s" : ""}</span>
-                <span className="text-slate-600">•</span>
+            <div className="space-y-4 pt-2 border-t border-slate-100">
+              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500">
+                <span className="text-slate-900 font-semibold">{videos.length} video{videos.length !== 1 ? "s" : ""}</span>
+                <span className="text-slate-300">•</span>
                 <span>Created {playlist.date}</span>
-                <span className="text-slate-600">•</span>
+                <span className="text-slate-300">•</span>
                 <span>{totalViews.toLocaleString()} total views</span>
               </div>
 
@@ -2852,7 +2831,7 @@ function PlaylistDetailScreen({
               <div className="flex flex-wrap items-center gap-2.5">
                 {videos.length > 0 && (
                   <Button
-                    className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-950/50 border border-purple-500/30 h-9 px-4 cursor-pointer"
+                    className="gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl shadow-xs h-9 px-4 cursor-pointer"
                     onClick={() => setPlayingVideo(videos[0])}
                   >
                     <Play className="h-4 w-4 fill-white" /> Play All
@@ -2860,38 +2839,38 @@ function PlaylistDetailScreen({
                 )}
 
                 <Button
-                  className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700/80 font-medium h-9 px-3.5 text-xs cursor-pointer"
+                  className="gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold rounded-xl shadow-xs h-9 px-3.5 text-xs cursor-pointer"
                   onClick={() => setAddVideosOpen(true)}
                 >
-                  <Plus className="h-4 w-4 text-purple-400" /> Add Videos
+                  <Plus className="h-4 w-4 text-slate-700" /> Add Videos
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-200 h-9 px-3.5 text-xs cursor-pointer"
+                  className="gap-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-9 px-3.5 text-xs rounded-xl shadow-xs cursor-pointer"
                   onClick={() => bannerInputRef.current?.click()}
                   disabled={uploadingBanner}
                 >
                   {uploadingBanner ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-900" />
                   ) : (
-                    <ImagePlus className="h-4 w-4 text-purple-400" />
+                    <ImagePlus className="h-4 w-4 text-slate-600" />
                   )}
                   Edit Thumbnail
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="gap-2 border-slate-800 bg-slate-950/80 hover:bg-slate-800 text-slate-200 h-9 px-3.5 text-xs cursor-pointer"
+                  className="gap-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-9 px-3.5 text-xs rounded-xl shadow-xs cursor-pointer"
                   onClick={() => onEditMeta(currentPlaylist)}
                 >
-                  <Pencil className="h-4 w-4 text-slate-400" /> Edit Details
+                  <Pencil className="h-4 w-4 text-slate-600" /> Edit Details
                 </Button>
 
                 {selected.length > 0 && (
                   <Button
                     variant="destructive"
-                    className="gap-2 font-medium h-9 px-3.5 text-xs ml-auto cursor-pointer"
+                    className="gap-2 font-medium h-9 px-3.5 text-xs ml-auto cursor-pointer rounded-xl"
                     onClick={removeSelected}
                   >
                     <Trash2 className="h-4 w-4" /> Remove Selected ({selected.length})
@@ -2905,10 +2884,10 @@ function PlaylistDetailScreen({
 
       {/* ── Selection Action Bar ── */}
       {selected.length > 0 && (
-        <div className="flex items-center justify-between bg-purple-950/80 border border-purple-800/60 rounded-xl px-5 py-3 shadow-lg backdrop-blur-xl">
+        <div className="flex items-center justify-between bg-slate-900 text-white rounded-2xl px-5 py-3 shadow-xl">
           <div className="flex items-center gap-3">
-            <CheckSquare className="h-5 w-5 text-purple-400" />
-            <span className="text-sm font-semibold text-purple-200">
+            <CheckSquare className="h-5 w-5 text-white" />
+            <span className="text-sm font-semibold text-white">
               {selected.length} video{selected.length > 1 ? "s" : ""} selected
             </span>
           </div>
@@ -2916,7 +2895,7 @@ function PlaylistDetailScreen({
             <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white text-xs cursor-pointer" onClick={() => setSelected([])}>
               Deselect All
             </Button>
-            <Button variant="destructive" size="sm" className="gap-1.5 text-xs cursor-pointer" onClick={removeSelected}>
+            <Button variant="destructive" size="sm" className="gap-1.5 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-lg cursor-pointer" onClick={removeSelected}>
               <Trash2 className="h-3.5 w-3.5" /> Remove from Playlist
             </Button>
           </div>
@@ -2924,44 +2903,44 @@ function PlaylistDetailScreen({
       )}
 
       {/* ── YouTube-Style Playlist Video List (Bottom Section) ── */}
-      <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+      <Card className="border border-slate-200/80 bg-white shadow-xs rounded-2xl overflow-hidden">
         {/* List Header */}
-        <div className="bg-slate-950/80 border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
+        <div className="bg-slate-50/80 border-b border-slate-200/80 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded accent-purple-600 cursor-pointer"
+              className="h-4 w-4 rounded accent-slate-900 cursor-pointer"
               checked={selected.length === videos.length && videos.length > 0}
               onChange={toggleAll}
             />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Playlist Videos ({videos.length})
             </span>
           </div>
-          <span className="text-xs text-slate-500 font-medium">Click any item to play</span>
+          <span className="text-xs text-slate-400 font-medium">Click any item to play</span>
         </div>
 
         <CardContent className="p-0">
           {loadingVideos ? (
             <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
-              <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
-              <span className="font-medium text-sm">Loading playlist videos...</span>
+              <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+              <span className="font-medium text-sm text-slate-500">Loading playlist videos...</span>
             </div>
           ) : videos.length === 0 ? (
-            <div className="text-center py-20 text-slate-500">
-              <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-400" />
-              <p className="font-semibold text-slate-300">No videos in this playlist yet</p>
+            <div className="text-center py-20 text-slate-400">
+              <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-30 text-slate-400" />
+              <p className="font-semibold text-slate-900">No videos in this playlist yet</p>
               <p className="text-xs text-slate-500 mt-1">Add videos to build your playlist collection</p>
-              <Button className="mt-4 gap-2 bg-purple-600 hover:bg-purple-500 text-white cursor-pointer" onClick={() => setAddVideosOpen(true)}>
+              <Button className="mt-4 gap-2 bg-slate-900 hover:bg-slate-800 text-white cursor-pointer rounded-xl" onClick={() => setAddVideosOpen(true)}>
                 <Plus className="h-4 w-4" /> Add Videos Now
               </Button>
             </div>
           ) : (
-            <div className="divide-y divide-slate-800/60">
+            <div className="divide-y divide-slate-100">
               {videos.map((v, index) => (
                 <div
                   key={v.id}
-                  className="p-4 md:p-5 flex items-center gap-4 md:gap-6 hover:bg-slate-800/40 transition-colors group relative cursor-pointer"
+                  className="p-4 md:p-5 flex items-center gap-4 md:gap-6 hover:bg-slate-50/80 transition-colors group relative cursor-pointer"
                   onMouseEnter={() => setHoveredId(v.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >
@@ -2969,65 +2948,65 @@ function PlaylistDetailScreen({
                   <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded accent-purple-600 cursor-pointer"
+                      className="h-4 w-4 rounded accent-slate-900 cursor-pointer"
                       checked={selected.includes(v.id)}
                       onChange={() => toggleSelect(v.id)}
                     />
                   </div>
 
                   {/* Item Order Index Number */}
-                  <span className="w-6 text-center text-xs font-mono font-bold text-slate-500 group-hover:text-purple-400 flex-shrink-0">
+                  <span className="w-6 text-center text-xs font-mono font-bold text-slate-400 group-hover:text-slate-700 flex-shrink-0">
                     #{index + 1}
                   </span>
 
                   {/* YouTube Thumbnail Format */}
                   <div
-                    className="relative h-20 w-36 rounded-xl bg-slate-950 flex-shrink-0 overflow-hidden border border-slate-800 shadow-md group-hover:border-purple-500/50 transition-all"
+                    className="relative h-20 w-36 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 shadow-xs group-hover:border-slate-300 transition-all"
                     onClick={() => setPlayingVideo(v)}
                   >
                     {v.thumbnailUrl ? (
                       <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Video className="h-6 w-6 text-purple-400 opacity-60" />
+                        <Video className="h-6 w-6 text-slate-400 opacity-60" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                      <div className="h-9 w-9 rounded-full bg-purple-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 shadow-lg">
-                        <Play className="h-4 w-4 fill-white ml-0.5" />
+                    <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-center justify-center">
+                      <div className="h-9 w-9 rounded-full bg-white/95 text-slate-900 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 shadow-lg">
+                        <Play className="h-4 w-4 fill-slate-900 ml-0.5" />
                       </div>
                     </div>
-                    <span className="absolute bottom-1 right-1 bg-black/85 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">
+                    <span className="absolute bottom-1 right-1 bg-slate-900/85 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">
                       {v.duration}
                     </span>
                   </div>
 
                   {/* Video Title & Metadata Information */}
                   <div className="flex-1 min-w-0 space-y-1" onClick={() => setPlayingVideo(v)}>
-                    <div className="font-bold text-slate-100 text-base group-hover:text-purple-400 transition-colors truncate">
+                    <div className="font-semibold text-slate-900 text-sm group-hover:text-slate-700 transition-colors truncate">
                       {v.title}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-medium">
                       <span>{v.category}</span>
-                      <span className="text-slate-600">•</span>
+                      <span className="text-slate-300">•</span>
                       <span>Added {v.date}</span>
-                      <span className="text-slate-600">•</span>
+                      <span className="text-slate-300">•</span>
                       <span>{v.views || "0"} views</span>
                     </div>
                     <div className="flex items-center gap-2 pt-1">
                       <Badge
                         variant="outline"
                         className={`text-[10px] font-mono ${v.status === "Published" || v.status === "published"
-                          ? "bg-emerald-950/80 border-emerald-800/60 text-emerald-400"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                           : v.status === "Draft" || v.status === "draft"
-                            ? "bg-slate-800 border-slate-700 text-slate-300"
-                            : "bg-amber-950/80 border-amber-800/60 text-amber-400"
+                            ? "bg-slate-100 border-slate-200 text-slate-700"
+                            : "bg-amber-50 border-amber-200 text-amber-700"
                           }`}
                       >
                         {v.status}
                       </Badge>
                       {v.premium && (
-                        <Badge variant="outline" className="text-[10px] bg-purple-950/80 border-purple-800/60 text-purple-300">
+                        <Badge variant="outline" className="text-[10px] bg-slate-900 text-white border-0 font-semibold">
                           Premium
                         </Badge>
                       )}
@@ -3039,7 +3018,7 @@ function PlaylistDetailScreen({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-purple-400 hover:bg-slate-800 cursor-pointer"
+                      className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
                       onClick={() => setPlayingVideo(v)}
                       title="Play Video"
                     >
@@ -3048,7 +3027,7 @@ function PlaylistDetailScreen({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                      className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
                       onClick={() => setEditVideoContent(v)}
                       title="Edit Video Details"
                     >
@@ -3057,7 +3036,7 @@ function PlaylistDetailScreen({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 cursor-pointer"
+                      className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
                       onClick={() => removeSingle(v.id)}
                       title="Remove from Playlist"
                     >
@@ -3290,24 +3269,22 @@ export default function ContentManagement() {
         onChange={(f, t) => { setFilterDateFrom(f); setFilterDateTo(t); }}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Content Management</h1>
-          <p className="text-slate-300 mt-1 text-sm font-medium">Upload, organize, and manage your OTT video library</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Content Management</h1>
+          <p className="text-slate-500 mt-1 text-sm font-normal">Upload, organize, and manage your OTT video library</p>
         </div>
-        <div className="flex items-center gap-3">
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={() => loadData()} title="Refresh Data" className="h-10 w-10 border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-300">
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-purple-400" : ""}`} />
+        <div className="flex items-center gap-2.5">
+          <Button variant="outline" size="icon" onClick={() => loadData()} title="Refresh Data" className="h-10 w-10 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl shadow-xs">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-slate-900" : ""}`} />
           </Button>
           {activeTab === "videos" && (
-            <Button className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white h-10 px-4 font-semibold shadow-lg shadow-purple-950/50 border border-purple-500/30" onClick={() => setUploadOpen(true)}>
+            <Button className="gap-2 bg-slate-900 hover:bg-slate-800 text-white h-10 px-4 font-semibold rounded-xl shadow-xs" onClick={() => setUploadOpen(true)}>
               <Plus className="h-4 w-4" />Upload Content
             </Button>
           )}
           {activeTab === "playlists" && (
-            <Button className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white h-10 px-4 font-semibold shadow-lg shadow-purple-950/50 border border-purple-500/30" onClick={() => setNewPlaylistOpen(true)}>
+            <Button className="gap-2 bg-slate-900 hover:bg-slate-800 text-white h-10 px-4 font-semibold rounded-xl shadow-xs" onClick={() => setNewPlaylistOpen(true)}>
               <Plus className="h-4 w-4" />New Playlist
             </Button>
           )}
@@ -3315,54 +3292,54 @@ export default function ContentManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        {/* Dark Studio tab switcher */}
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
-          <TabsList className="bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+        {/* Tab switcher & Search toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
+          <TabsList className="bg-slate-100 p-1 rounded-xl border border-slate-200/80 inline-flex">
             <TabsTrigger
               value="videos"
-              className="gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all data-[state=active]:bg-purple-600/90 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-950/50 text-slate-400 hover:text-slate-200"
+              className="gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs text-slate-600 hover:text-slate-900"
             >
               <Video className="h-4 w-4" />Videos
-              <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === "videos" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"}`}>
+              <span className={`ml-1 text-[11px] px-2 py-0.5 rounded-full font-bold ${activeTab === "videos" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600"}`}>
                 {contents.length}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="playlists"
-              className="gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all data-[state=active]:bg-purple-600/90 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-950/50 text-slate-400 hover:text-slate-200"
+              className="gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs text-slate-600 hover:text-slate-900"
             >
               <ListVideo className="h-4 w-4" />Playlists
-              <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === "playlists" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"}`}>
+              <span className={`ml-1 text-[11px] px-2 py-0.5 rounded-full font-bold ${activeTab === "playlists" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600"}`}>
                 {playlists.length}
               </span>
             </TabsTrigger>
           </TabsList>
 
           {activeTab === "videos" && (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input type="search" placeholder="Search videos..." className="pl-9 w-64 bg-slate-950/90 border-slate-800 text-slate-100 placeholder:text-slate-500"
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Input type="search" placeholder="Search videos..." className="pl-8.5 w-52 sm:w-60 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl text-xs h-9"
                   value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
-              <Button variant={showFilters ? "default" : "outline"} className={`gap-2 border-slate-800 ${showFilters ? "bg-purple-600 text-white hover:bg-purple-500" : "bg-slate-900 text-slate-300 hover:bg-slate-800"}`}
+              <Button variant="outline" className={`gap-2 rounded-xl text-xs font-semibold shadow-xs h-9 ${showFilters ? "bg-slate-900 text-white hover:bg-slate-800 border-slate-900" : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200"}`}
                 onClick={() => setShowFilters(!showFilters)}>
-                <SlidersHorizontal className="h-4 w-4" />Filters
+                <SlidersHorizontal className="h-3.5 w-3.5" />Filters
                 {activeCount > 0 && <span className="ml-1 bg-white/20 text-white rounded-full text-xs font-bold px-1.5">{activeCount}</span>}
               </Button>
             </div>
           )}
 
           {activeTab === "playlists" && (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input type="search" placeholder="Search playlists..." className="pl-9 w-64 bg-slate-950/90 border-slate-800 text-slate-100 placeholder:text-slate-500"
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Input type="search" placeholder="Search playlists..." className="pl-8.5 w-52 sm:w-60 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl text-xs h-9"
                   value={playlistSearch} onChange={(e) => setPlaylistSearch(e.target.value)} />
               </div>
               <Select value={playlistSortBy} onValueChange={setPlaylistSortBy}>
-                <SelectTrigger className="h-10 text-sm w-40 bg-slate-950/90 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                <SelectTrigger className="h-9 text-xs w-36 bg-white border-slate-200 text-slate-900 rounded-xl shadow-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-slate-900 rounded-xl shadow-lg">
                   <SelectItem value="newest">Newest first</SelectItem>
                   <SelectItem value="oldest">Oldest first</SelectItem>
                   <SelectItem value="title">Title A–Z</SelectItem>
@@ -3374,15 +3351,15 @@ export default function ContentManagement() {
 
         {/* ── Videos Tab ── */}
         <TabsContent value="videos">
-          <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+          <Card className="border border-slate-200/80 bg-white shadow-xs rounded-2xl overflow-hidden">
             {showFilters && (
-              <CardHeader className="bg-slate-950/80 border-b border-slate-800/80 p-4">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 p-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                   <div>
-                    <Label className="text-xs mb-1.5 block font-semibold text-slate-400 uppercase tracking-wider">Status</Label>
+                    <Label className="text-[11px] mb-1.5 block font-bold text-slate-500 uppercase tracking-wider">Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="h-9 text-sm bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                      <SelectTrigger className="h-9 text-xs bg-white border-slate-200 text-slate-900 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200 text-slate-900 rounded-xl">
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="Published">Published</SelectItem>
                         <SelectItem value="Draft">Draft</SelectItem>
@@ -3391,27 +3368,27 @@ export default function ContentManagement() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block font-semibold text-slate-400 uppercase tracking-wider">Category</Label>
+                    <Label className="text-[11px] mb-1.5 block font-bold text-slate-500 uppercase tracking-wider">Category</Label>
                     <Select value={filterCategory} onValueChange={setFilterCategory}>
-                      <SelectTrigger className="h-9 text-sm bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                      <SelectTrigger className="h-9 text-xs bg-white border-slate-200 text-slate-900 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200 text-slate-900 rounded-xl">
                         <SelectItem value="all">All Categories</SelectItem>
                         {uniqueCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block font-semibold text-slate-400 uppercase tracking-wider">Date</Label>
+                    <Label className="text-[11px] mb-1.5 block font-bold text-slate-500 uppercase tracking-wider">Date</Label>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 gap-1.5 text-sm w-full justify-start bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800"
+                      className="h-9 gap-1.5 text-xs w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl shadow-xs"
                       onClick={() => setDateRangeOpen(true)}
                     >
                       <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
                       <span className="truncate flex-1 text-left">{dateLabel ?? "Pick date or range"}</span>
                       {dateLabel && (
-                        <X className="h-3 w-3 flex-shrink-0 text-slate-400 hover:text-rose-400"
+                        <X className="h-3.5 w-3.5 flex-shrink-0 text-slate-400 hover:text-red-600"
                           onClick={(e) => { e.stopPropagation(); setFilterDateFrom(""); setFilterDateTo(""); }} />
                       )}
                     </Button>
@@ -3419,10 +3396,10 @@ export default function ContentManagement() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Sort by:</Label>
+                    <Label className="text-xs text-slate-500 font-medium">Sort by:</Label>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="h-8 text-sm w-36 bg-slate-900 border-slate-800 text-slate-100"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                      <SelectTrigger className="h-8 text-xs w-36 bg-white border-slate-200 text-slate-900 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200 text-slate-900 rounded-xl">
                         <SelectItem value="newest">Newest first</SelectItem>
                         <SelectItem value="oldest">Oldest first</SelectItem>
                         <SelectItem value="views">Most views</SelectItem>
@@ -3431,7 +3408,7 @@ export default function ContentManagement() {
                     </Select>
                   </div>
                   {activeCount > 0 && (
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-purple-400 hover:text-purple-300 h-8" onClick={resetFilters}>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-slate-600 hover:text-slate-900 h-8 font-medium" onClick={resetFilters}>
                       <X className="h-3 w-3" />Clear filters
                     </Button>
                   )}
@@ -3442,58 +3419,58 @@ export default function ContentManagement() {
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
-                  <span className="font-medium text-sm">Loading video assets from server...</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+                  <span className="font-medium text-xs text-slate-500">Loading video assets from server...</span>
                 </div>
               ) : contents.length === 0 ? (
-                <div className="text-center py-20 text-slate-500">
-                  <Video className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-400" />
-                  <p className="font-semibold text-slate-300">No video content found</p>
+                <div className="text-center py-20 text-slate-400">
+                  <Video className="h-12 w-12 mx-auto mb-3 opacity-30 text-slate-400" />
+                  <p className="font-semibold text-slate-900">No video content found</p>
                   <p className="text-xs text-slate-500 mt-1">Try adjusting your search or active filters</p>
-                  <Button variant="link" className="text-purple-400 mt-2 font-medium" onClick={resetFilters}>Reset filters</Button>
+                  <Button variant="link" className="text-slate-900 mt-2 font-medium" onClick={resetFilters}>Reset filters</Button>
                 </div>
               ) : (
                 <Table>
-                  <TableHeader className="bg-slate-950/80 border-b border-slate-800/80">
-                    <TableRow className="border-b border-slate-800/80 hover:bg-transparent">
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Video Asset</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Category</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Status</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Views</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Duration</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Date Added</TableHead>
-                      <TableHead className="text-right font-bold text-slate-400 uppercase tracking-wider text-xs">Actions</TableHead>
+                  <TableHeader className="bg-slate-50/80 border-b border-slate-200/80">
+                    <TableRow className="border-b border-slate-200/80 hover:bg-transparent">
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Video Asset</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Category</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Status</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Views</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Duration</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Date Added</TableHead>
+                      <TableHead className="text-right font-bold text-slate-500 uppercase tracking-wider text-[11px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {contents.map((content) => (
-                      <TableRow key={content.id} className="hover:bg-slate-800/40 border-b border-slate-800/60 transition-colors group cursor-pointer">
+                      <TableRow key={content.id} className="hover:bg-slate-50/80 border-b border-slate-100 transition-colors group cursor-pointer">
                         <TableCell onClick={() => setPlayingVideo(content)}>
                           <div className="flex items-center gap-3">
-                            <div className="h-16 w-24 rounded-xl bg-slate-950 flex items-center justify-center flex-shrink-0 relative overflow-hidden group/thumb shadow-md border border-slate-800">
+                            <div className="h-14 w-24 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 relative overflow-hidden group/thumb shadow-xs border border-slate-200/80">
                               {content.thumbnailUrl ? (
                                 <img src={content.thumbnailUrl} alt={content.title} className="w-full h-full object-cover" />
                               ) : (
-                                <Video className="h-6 w-6 text-purple-400 opacity-60" />
+                                <Video className="h-5 w-5 text-slate-400 opacity-60" />
                               )}
-                              <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-colors flex items-center justify-center">
-                                <Play className="h-7 w-7 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity fill-white" />
+                              <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/30 transition-colors flex items-center justify-center">
+                                <Play className="h-6 w-6 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity fill-white" />
                               </div>
-                              <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-mono">{content.duration}</span>
+                              <span className="absolute bottom-1 right-1 bg-slate-900/80 text-white text-[10px] px-1 rounded font-mono">{content.duration}</span>
                             </div>
                             <div>
-                              <div className="font-semibold text-slate-100 text-sm group-hover:text-purple-400 transition-colors">{content.title}</div>
+                              <div className="font-semibold text-slate-900 text-sm group-hover:text-slate-700 transition-colors">{content.title}</div>
                               {((content.encodeProgress !== undefined && content.encodeProgress < 100) ||
                                 ["Pending", "pending", "Processing", "processing", "Encoding", "encoding", "Uploading", "uploading"].includes(content.status)) ? (
                                 <div className="mt-1 space-y-1">
-                                  <div className="w-36 bg-slate-950 border border-slate-800 rounded-full h-2 overflow-hidden relative">
+                                  <div className="w-36 bg-slate-100 border border-slate-200 rounded-full h-2 overflow-hidden relative">
                                     <div
-                                      className="bg-gradient-to-r from-purple-600 to-indigo-500 h-full transition-all duration-500 rounded-full"
+                                      className="bg-slate-900 h-full transition-all duration-500 rounded-full"
                                       style={{ width: `${Math.max(content.encodeProgress ?? 35, 10)}%` }}
                                     />
                                   </div>
-                                  <div className="text-[10px] font-semibold text-purple-400 flex items-center gap-1">
-                                    <Loader2 className="h-3 w-3 animate-spin text-purple-400" />
+                                  <div className="text-[10px] font-semibold text-slate-600 flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin text-slate-700" />
                                     <span>
                                       {content.encodeProgress !== undefined && content.encodeProgress > 0
                                         ? `${content.encodeProgress}% uploaded / encoding`
@@ -3502,50 +3479,50 @@ export default function ContentManagement() {
                                   </div>
                                 </div>
                               ) : content.premium ? (
-                                <Badge variant="outline" className="mt-1 text-[10px] bg-purple-950/80 border-purple-800/60 text-purple-300">Premium</Badge>
+                                <Badge variant="outline" className="mt-1 text-[10px] bg-slate-900 text-white border-0 font-semibold">Premium</Badge>
                               ) : null}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-400 text-sm">{content.category}</TableCell>
+                        <TableCell className="text-slate-600 text-xs">{content.category}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-xs font-mono ${content.status === "Published" || content.status === "published"
-                            ? "bg-emerald-950/80 border-emerald-800/60 text-emerald-400"
+                          <Badge variant="outline" className={`text-xs font-semibold ${content.status === "Published" || content.status === "published"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                             : content.status === "Draft" || content.status === "draft"
-                              ? "bg-slate-800 border-slate-700 text-slate-300"
-                              : "bg-amber-950/80 border-amber-800/60 text-amber-400"
+                              ? "bg-slate-100 border-slate-200 text-slate-700"
+                              : "bg-amber-50 border-amber-200 text-amber-700"
                             }`}>
                             {content.status} {content.encodeProgress !== undefined ? `(${content.encodeProgress}%)` : ""}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-slate-300 font-medium text-sm">{content.views}</TableCell>
-                        <TableCell className="text-slate-400 font-mono text-xs">{content.duration}</TableCell>
-                        <TableCell className="text-slate-400 text-sm">{content.date}</TableCell>
+                        <TableCell className="text-slate-700 font-medium text-xs">{content.views}</TableCell>
+                        <TableCell className="text-slate-500 font-mono text-xs">{content.duration}</TableCell>
+                        <TableCell className="text-slate-500 text-xs">{content.date}</TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"><MoreVertical className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-slate-900/95 border border-slate-800 shadow-2xl backdrop-blur-xl">
-                              <DropdownMenuItem onClick={() => setPlayingVideo(content)}>
-                                <Play className="mr-2 h-4 w-4 fill-purple-400 text-purple-400" />Play Video
+                            <DropdownMenuContent align="end" className="bg-white border border-slate-200 shadow-xl rounded-xl text-slate-700">
+                              <DropdownMenuItem onClick={() => setPlayingVideo(content)} className="text-xs cursor-pointer">
+                                <Play className="mr-2 h-3.5 w-3.5 fill-slate-700 text-slate-700" />Play Video
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setViewContent(content)}>
-                                <Eye className="mr-2 h-4 w-4 text-slate-300" />View Details
+                              <DropdownMenuItem onClick={() => setViewContent(content)} className="text-xs cursor-pointer">
+                                <Eye className="mr-2 h-3.5 w-3.5 text-slate-500" />View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setEditContent(content)}>
-                                <Edit className="mr-2 h-4 w-4 text-slate-300" />Edit Content
+                              <DropdownMenuItem onClick={() => setEditContent(content)} className="text-xs cursor-pointer">
+                                <Edit className="mr-2 h-3.5 w-3.5 text-slate-500" />Edit Content
                               </DropdownMenuItem>
                               {content.status !== "Published" && content.status !== "published" && (
                                 <DropdownMenuItem onClick={() => {
                                   publishVideo(content.id).then(() => loadData(true));
-                                }}>
-                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-400" />Publish
+                                }} className="text-xs cursor-pointer text-emerald-700 font-medium">
+                                  <CheckCircle className="mr-2 h-3.5 w-3.5 text-emerald-600" />Publish
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-rose-400 focus:bg-rose-950/40" onClick={() => handleDeleteVideo(content.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />Delete Asset
+                              <DropdownMenuItem className="text-rose-600 text-xs cursor-pointer font-medium" onClick={() => handleDeleteVideo(content.id)}>
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />Delete Asset
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -3561,73 +3538,73 @@ export default function ContentManagement() {
 
         {/* ── Playlists Tab ── */}
         <TabsContent value="playlists">
-          <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+          <Card className="border border-slate-200/80 bg-white shadow-xs rounded-2xl overflow-hidden">
             <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
-                  <span className="font-medium text-sm">Loading playlists...</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+                  <span className="font-medium text-xs text-slate-500">Loading playlists...</span>
                 </div>
               ) : playlists.length === 0 ? (
-                <div className="text-center py-20 text-slate-500">
-                  <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-40 text-purple-400" />
-                  <p className="font-semibold text-slate-300">No playlists found</p>
-                  <Button variant="link" className="text-purple-400 mt-2 font-medium" onClick={() => setNewPlaylistOpen(true)}>Create a new playlist</Button>
+                <div className="text-center py-20 text-slate-400">
+                  <ListVideo className="h-12 w-12 mx-auto mb-3 opacity-30 text-slate-400" />
+                  <p className="font-semibold text-slate-900">No playlists found</p>
+                  <Button variant="link" className="text-slate-900 mt-2 font-medium" onClick={() => setNewPlaylistOpen(true)}>Create a new playlist</Button>
                 </div>
               ) : (
                 <Table>
-                  <TableHeader className="bg-slate-950/80 border-b border-slate-800/80">
-                    <TableRow className="border-b border-slate-800/80 hover:bg-transparent">
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Playlist Collection</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Videos Count</TableHead>
-                      <TableHead className="font-bold text-slate-400 uppercase tracking-wider text-xs">Date Created</TableHead>
-                      <TableHead className="text-right font-bold text-slate-400 uppercase tracking-wider text-xs">Actions</TableHead>
+                  <TableHeader className="bg-slate-50/80 border-b border-slate-200/80">
+                    <TableRow className="border-b border-slate-200/80 hover:bg-transparent">
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Playlist Collection</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Videos Count</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Date Created</TableHead>
+                      <TableHead className="text-right font-bold text-slate-500 uppercase tracking-wider text-[11px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {playlists.map((pl) => (
-                      <TableRow key={pl.id} className="hover:bg-slate-800/40 border-b border-slate-800/60 transition-colors">
+                      <TableRow key={pl.id} className="hover:bg-slate-50/80 border-b border-slate-100 transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div
-                              className="relative h-14 w-24 rounded-xl bg-slate-950 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer group shadow-md border border-slate-800"
+                              className="relative h-14 w-24 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer group shadow-xs border border-slate-200/80"
                               onClick={() => setActivePlaylist(pl)}
                             >
                               {pl.thumbnailUrl ? (
                                 <img src={pl.thumbnailUrl} alt={pl.title} className="w-full h-full object-cover" />
                               ) : (
-                                <ListVideo className="h-6 w-6 text-purple-400 opacity-60" />
+                                <ListVideo className="h-5 w-5 text-slate-400 opacity-60" />
                               )}
-                              <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-1 rounded font-bold">{pl.videos}</span>
+                              <span className="absolute bottom-1 right-1 bg-slate-900/80 text-white text-[10px] px-1 rounded font-bold">{pl.videos}</span>
                             </div>
                             <div>
                               <button
-                                className="font-semibold text-slate-100 text-left hover:text-purple-400 transition-colors text-sm"
+                                className="font-semibold text-slate-900 text-left hover:text-slate-700 transition-colors text-sm"
                                 onClick={() => setActivePlaylist(pl)}
                               >
                                 {pl.title}
                               </button>
-                              <div className="text-xs text-slate-400 mt-0.5 max-w-xs truncate">{pl.description || "No description provided."}</div>
+                              <div className="text-xs text-slate-500 mt-0.5 max-w-xs truncate">{pl.description || "No description provided."}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-300 font-medium text-sm">{pl.videos} videos</TableCell>
-                        <TableCell className="text-slate-400 text-sm">{pl.date}</TableCell>
+                        <TableCell className="text-slate-700 font-medium text-xs">{pl.videos} videos</TableCell>
+                        <TableCell className="text-slate-500 text-xs">{pl.date}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"><MoreVertical className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-slate-900/95 border border-slate-800 shadow-2xl backdrop-blur-xl">
-                              <DropdownMenuItem onClick={() => setActivePlaylist(pl)}>
-                                <ListVideo className="mr-2 h-4 w-4 text-purple-400" />Open Playlist
+                            <DropdownMenuContent align="end" className="bg-white border border-slate-200 shadow-xl rounded-xl text-slate-700">
+                              <DropdownMenuItem onClick={() => setActivePlaylist(pl)} className="text-xs cursor-pointer">
+                                <ListVideo className="mr-2 h-3.5 w-3.5 text-slate-700" />Open Playlist
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setEditPlaylistMeta(pl)}>
-                                <Edit className="mr-2 h-4 w-4 text-slate-300" />Edit Details
+                              <DropdownMenuItem onClick={() => setEditPlaylistMeta(pl)} className="text-xs cursor-pointer">
+                                <Edit className="mr-2 h-3.5 w-3.5 text-slate-500" />Edit Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-rose-400 focus:bg-rose-950/40" onClick={() => handleDeletePlaylist(pl.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />Delete Playlist
+                              <DropdownMenuItem className="text-rose-600 text-xs cursor-pointer font-medium" onClick={() => handleDeletePlaylist(pl.id)}>
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />Delete Playlist
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -3644,19 +3621,19 @@ export default function ContentManagement() {
 
       {/* ── Top-Right Floating Toast Notification ── */}
       {toast.show && (
-        <div className="fixed top-5 right-5 z-[9999] max-w-sm w-full bg-slate-900 text-white border border-red-500/60 shadow-2xl rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top-4 duration-300">
-          <div className="h-9 w-9 rounded-full bg-red-950/80 border border-red-800 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <AlertCircle className="h-5 w-5 text-red-400" />
+        <div className="fixed top-5 right-5 z-[9999] max-w-sm w-full bg-slate-900 text-white border border-slate-800 shadow-2xl rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top-4 duration-300">
+          <div className="h-8 w-8 rounded-xl bg-red-900/60 border border-red-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <AlertCircle className="h-4 w-4 text-red-300" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-sm text-white">{toast.title}</h4>
-            <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{toast.message}</p>
+            <h4 className="font-bold text-xs text-white">{toast.title}</h4>
+            <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">{toast.message}</p>
           </div>
           <button
             onClick={() => setToast((prev) => ({ ...prev, show: false }))}
             className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}

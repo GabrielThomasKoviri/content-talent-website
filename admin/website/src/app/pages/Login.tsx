@@ -63,13 +63,13 @@ export default function Login() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-slate-100">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FB] text-slate-900">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <span className="font-bold text-white text-xl">T</span>
+          <div className="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
+            <span className="font-bold text-xl">T</span>
           </div>
-          <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
-            <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+          <div className="flex items-center gap-2.5 text-slate-500 text-xs font-semibold">
+            <Loader2 className="h-4 w-4 animate-spin text-slate-900" />
             <span>Checking session...</span>
           </div>
         </div>
@@ -78,37 +78,35 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 relative overflow-hidden p-4">
-      {/* Dynamic Ambient Background Elements */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Main Glassmorphic Login Card */}
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl z-10 relative">
+    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] text-slate-900 p-4">
+      {/* Main Bress Login Card */}
+      <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-8 shadow-xs relative">
         
         {/* Header Badge & Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium mb-4">
-            <Sparkles className="w-3.5 h-3.5" />
+        <div className="text-center mb-6">
+          <div className="h-11 w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg mx-auto mb-3 shadow-xs">
+            T
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold mb-3">
+            <Sparkles className="w-3 h-3 text-slate-700" />
             <span>Creator Studio Portal</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Welcome Back</h1>
-          <p className="text-sm text-slate-400">Sign in to manage your OTT platform, videos & revenue</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1.5">Welcome Back</h1>
+          <p className="text-xs text-slate-500 font-normal">Sign in to manage your OTT platform, videos & revenue</p>
         </div>
 
         {/* Error Notification Banner */}
         {errorMsg && (
-          <div className="mb-6 p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/30 text-rose-200 text-xs flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <div className="flex-1 font-medium">{errorMsg}</div>
+          <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2.5 font-medium">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">{errorMsg}</div>
           </div>
         )}
 
         {/* Credentials Form */}
         <form onSubmit={handleStandardLogin} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            <Label htmlFor="email" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-slate-400" />
               Email Address
             </Label>
@@ -118,7 +116,7 @@ export default function Login() {
               placeholder="creator@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 h-11 focus:ring-purple-500/40 focus:border-purple-500"
+              className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 h-10 rounded-xl text-xs"
               required
               autoFocus
             />
@@ -126,7 +124,7 @@ export default function Login() {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+              <Label htmlFor="password" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-slate-400" />
                 Password
               </Label>
@@ -138,13 +136,13 @@ export default function Login() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 h-11 pr-10 focus:ring-purple-500/40 focus:border-purple-500"
+                className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 h-10 pr-10 rounded-xl text-xs"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -158,39 +156,39 @@ export default function Login() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-purple-600 focus:ring-purple-500/30"
+                className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-950/10 cursor-pointer"
               />
-              <span className="text-xs text-slate-400">Remember me</span>
+              <span className="text-xs text-slate-600 font-medium">Remember me</span>
             </label>
           </div>
 
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-11 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium shadow-lg shadow-purple-950/50 flex items-center justify-center gap-2 transition-all mt-2"
+            className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all mt-3 cursor-pointer text-xs"
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Signing in...
               </span>
             ) : (
               <>
                 <span>Sign In to Studio</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
           </Button>
         </form>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-          <span className="flex items-center gap-1.5 text-slate-500">
-            <KeyRound className="w-3.5 h-3.5 text-purple-400" />
+        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <span className="flex items-center gap-1.5 text-slate-500 font-medium text-[11px]">
+            <KeyRound className="w-3 h-3 text-slate-400" />
             Creator Studio
           </span>
-          <span className="text-slate-500 font-mono text-[11px]">
-            FastAPI Auth Protected
+          <span className="text-slate-400 font-medium text-[11px]">
+            Secure Connection
           </span>
         </div>
       </div>

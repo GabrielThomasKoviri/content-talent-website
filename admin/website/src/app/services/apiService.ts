@@ -717,7 +717,8 @@ export async function deleteThumbnail(
 // ── Branding API ────────────────────────────────────────────────────────────
 
 export interface ApiBranding {
-  creatorName: string;
+  studioName: string;
+  creatorName?: string;
   tagline: string;
   description: string;
   bannerUrl: string;
@@ -726,9 +727,11 @@ export interface ApiBranding {
 }
 
 function transformBranding(raw: any): ApiBranding {
-  if (!raw) return { creatorName: "", tagline: "", description: "", bannerUrl: "", logoUrl: "" };
+  if (!raw) return { studioName: "", creatorName: "", tagline: "", description: "", bannerUrl: "", logoUrl: "" };
+  const name = raw.studio_name || raw.studioName || raw.creator_name || raw.creatorName || "";
   return {
-    creatorName: raw.creator_name || raw.creatorName || "",
+    studioName: name,
+    creatorName: name,
     tagline: raw.tagline || "",
     description: raw.description || "",
     bannerUrl: raw.banner_url || raw.bannerUrl || "",
@@ -739,9 +742,7 @@ function transformBranding(raw: any): ApiBranding {
 
 export async function getCreatorBranding(): Promise<ApiBranding> {
   try {
-    const res = await fetch(`${BASE_URL}/api/v1/admin/branding`, {
-      headers: getAuthHeaders(),
-    });
+    const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/branding`);
     const json = await handleResponse<any>(res);
     return transformBranding(json);
   } catch (err) {
@@ -751,20 +752,23 @@ export async function getCreatorBranding(): Promise<ApiBranding> {
 }
 
 export async function updateCreatorBranding(data: {
+  studio_name?: string;
+  studioName?: string;
   creator_name?: string;
   creatorName?: string;
   tagline?: string;
   description?: string;
 }): Promise<ApiBranding> {
   const payload: any = {};
-  if (data.creator_name !== undefined) payload.creator_name = data.creator_name;
-  else if (data.creatorName !== undefined) payload.creator_name = data.creatorName;
+  const name = data.studio_name ?? data.studioName ?? data.creator_name ?? data.creatorName;
+  if (name !== undefined) {
+    payload.studio_name = name;
+  }
   if (data.tagline !== undefined) payload.tagline = data.tagline;
   if (data.description !== undefined) payload.description = data.description;
 
-  const res = await fetch(`${BASE_URL}/api/v1/admin/branding`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/branding`, {
     method: "PUT",
-    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
   const json = await handleResponse<any>(res);
@@ -775,10 +779,8 @@ export async function uploadCreatorLogo(file: File): Promise<{ logoUrl: string }
   const formData = new FormData();
   formData.append("logo", file);
 
-  const token = getAuthToken();
-  const res = await fetch(`${BASE_URL}/api/v1/admin/branding/logo`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/branding/logo`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" },
     body: formData,
   });
   const json = await handleResponse<any>(res);
@@ -791,10 +793,8 @@ export async function uploadCreatorBanner(file: File): Promise<{ bannerUrl: stri
   const formData = new FormData();
   formData.append("banner", file);
 
-  const token = getAuthToken();
-  const res = await fetch(`${BASE_URL}/api/v1/admin/branding/banner`, {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/branding/banner`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" },
     body: formData,
   });
   const json = await handleResponse<any>(res);
@@ -1903,9 +1903,7 @@ export async function getDashboardRecentActivity(params?: {
   if (params?.page) query.append("page", params.page.toString());
   if (params?.limit) query.append("limit", Math.min(Math.max(params.limit, 1), 20).toString());
 
-  const res = await fetch(`${BASE_URL}/api/v1/admin/dashboard/recent-activity?${query.toString()}`, {
-    headers: getAuthHeaders(),
-  });
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/dashboard/recent-activity?${query.toString()}`);
   const json = await handleResponse<any>(res);
   return {
     total: json.total ?? 0,
@@ -1922,6 +1920,143 @@ export async function getDashboardRecentActivity(params?: {
       joinedAt: item.joined_at,
     })),
   };
+}
+
+// ── Monetization & Settlements Interfaces ───────────────────────────────────
+
+export interface CurrentPeriodSummary {
+  period: string;
+  estimated_earnings: number | null;
+  impressions: number;
+  ecpm: number | null;
+  expected_payout_date: string;
+}
+
+export interface PendingPayoutSummary {
+  period: string;
+  amount: number;
+  status: "reconciled" | "pending_bank_details" | string;
+  payout_date: string;
+}
+
+export interface LastPayoutSummary {
+  period: string;
+  amount: number;
+  payout_date: string;
+  utr: string | null;
+}
+
+export interface ApiMonetizationSummary {
+  currency: string;
+  payout_profile_configured: boolean;
+  current_period: CurrentPeriodSummary;
+  pending_payout: PendingPayoutSummary | null;
+  last_payout: LastPayoutSummary | null;
+  lifetime_earnings: number;
+}
+
+export interface MonetizationAnalyticsPoint {
+  date: string;
+  impressions: number;
+  ecpm: number | null;
+  estimated_earnings: number | null;
+}
+
+export interface ApiMonetizationAnalytics {
+  start_date: string;
+  end_date: string;
+  interval: string;
+  currency: string;
+  data_points: MonetizationAnalyticsPoint[];
+}
+
+export interface ApiSettlementItem {
+  statement_id: string;
+  month: string;
+  impressions_count: number;
+  ecpm: number;
+  amount: number;
+  currency: string;
+  status: "accruing" | "pending_bank_details" | "reconciled" | "paid" | string;
+  settled_at: string | null;
+  transaction_reference: string | null;
+  invoice_url: string | null;
+}
+
+export interface ApiSettlementsResponse {
+  items: ApiSettlementItem[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface ApiPayoutProfile {
+  account_holder_name: string | null;
+  bank_name: string | null;
+  account_number_masked: string | null;
+  ifsc_code: string | null;
+  updated_at: string | null;
+}
+
+export interface UpdatePayoutProfilePayload {
+  account_holder_name: string;
+  account_number: string;
+  ifsc_code: string;
+}
+
+// ── Monetization & Settlements Endpoints ────────────────────────────────────
+
+export async function getMonetizationSummary(): Promise<ApiMonetizationSummary> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/monetization/summary`);
+  return handleResponse<ApiMonetizationSummary>(res);
+}
+
+export async function getMonetizationAnalytics(params?: {
+  range?: string;
+  start_date?: string;
+  end_date?: string;
+  interval?: string;
+}): Promise<ApiMonetizationAnalytics> {
+  const query = new URLSearchParams();
+  if (params?.range) query.append("range", params.range);
+  if (params?.start_date) query.append("start_date", params.start_date);
+  if (params?.end_date) query.append("end_date", params.end_date);
+  if (params?.interval) query.append("interval", params.interval);
+
+  const qs = query.toString();
+  const url = `${BASE_URL}/api/v1/admin/monetization/analytics${qs ? `?${qs}` : ""}`;
+  const res = await fetchWithAuth(url);
+  return handleResponse<ApiMonetizationAnalytics>(res);
+}
+
+export async function getMonetizationSettlements(params?: {
+  page?: number;
+  limit?: number;
+}): Promise<ApiSettlementsResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.append("page", params.page.toString());
+  if (params?.limit) query.append("limit", params.limit.toString());
+
+  const qs = query.toString();
+  const url = `${BASE_URL}/api/v1/admin/monetization/settlements${qs ? `?${qs}` : ""}`;
+  const res = await fetchWithAuth(url);
+  return handleResponse<ApiSettlementsResponse>(res);
+}
+
+export async function getPayoutSettings(): Promise<ApiPayoutProfile> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/monetization/settings`);
+  return handleResponse<ApiPayoutProfile>(res);
+}
+
+export async function updatePayoutSettings(
+  payload: UpdatePayoutProfilePayload
+): Promise<ApiPayoutProfile> {
+  const res = await fetchWithAuth(`${BASE_URL}/api/v1/admin/monetization/settings`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<ApiPayoutProfile>(res);
 }
 
 
