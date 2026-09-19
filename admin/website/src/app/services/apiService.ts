@@ -461,7 +461,7 @@ function transformComment(raw: any): ApiComment {
     videoId: raw.video_id ?? raw.videoId ?? 0,
     videoTitle: raw.video_title || raw.videoTitle || "",
     likes: raw.likes ?? 0,
-    isLiked: raw.is_hearted_by_creator ?? raw.is_liked ?? raw.isLiked ?? false,
+    isLiked: raw.is_liked ?? raw.isLiked ?? raw.is_hearted_by_creator ?? false,
     replyCount: raw.reply_count ?? raw.replyCount ?? 0,
     createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
   };
@@ -699,17 +699,12 @@ export async function selectMainThumbnail(
 
 export async function deleteThumbnail(
   videoId: number,
-  slotOrUrl?: number | string
+  thumbnailUrl: string
 ): Promise<{ status?: string; success?: boolean }> {
-  const payload = typeof slotOrUrl === "string"
-    ? { thumbnail_url: slotOrUrl }
-    : slotOrUrl !== undefined
-      ? { thumbnail_url: String(slotOrUrl), slot: slotOrUrl }
-      : { thumbnail_url: "" };
   const res = await fetch(`${BASE_URL}/api/v1/admin/videos/${videoId}/thumbnails`, {
     method: "DELETE",
     headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ thumbnail_url: thumbnailUrl }),
   });
   return handleResponse(res);
 }
@@ -1519,7 +1514,8 @@ export interface ApiCategory {
   name: string;
   slug: string;
   description: string;
-  icon: string;
+  thumbnailUrl?: string;
+  icon?: string;
   color: string;
   contentCount: number;
   order: number;
@@ -1530,14 +1526,12 @@ export interface ApiCategory {
 export interface CreateCategoryPayload {
   name: string;
   description?: string;
-  icon?: string;
   color?: string;
 }
 
 export interface UpdateCategoryPayload {
   name?: string;
   description?: string;
-  icon?: string;
   color?: string;
 }
 
@@ -1547,7 +1541,8 @@ function transformCategory(raw: any): ApiCategory {
     name: raw.name || "Untitled Category",
     slug: raw.slug || "",
     description: raw.description || "",
-    icon: raw.icon || "📁",
+    thumbnailUrl: raw.thumbnailUrl || raw.thumbnail_url || undefined,
+    icon: raw.icon || undefined,
     color: raw.color || "#3b82f6",
     contentCount: raw.contentCount ?? raw.content_count ?? 0,
     order: raw.order ?? raw.display_order ?? 0,
@@ -1595,6 +1590,25 @@ export async function updateCategory(id: number, data: UpdateCategoryPayload): P
   });
   const json = await handleResponse<any>(res);
   return transformCategory(json);
+}
+
+export async function uploadCategoryThumbnail(
+  categoryId: number,
+  file: File
+): Promise<{ thumbnailUrl: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/v1/admin/categories/${categoryId}/thumbnail/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" },
+    body: formData,
+  });
+  const json = await handleResponse<any>(res);
+  return {
+    thumbnailUrl: json.thumbnail_url || json.thumbnailUrl || "",
+  };
 }
 
 export async function deleteCategory(id: number): Promise<{ message: string }> {
@@ -1737,6 +1751,7 @@ export interface ContentInventoryBreakdown {
   total: number;
   published: number;
   drafts: number;
+  scheduled: number;
   recently_added: number;
 }
 
@@ -1822,7 +1837,13 @@ export async function getDashboardStats(params?: {
     totalViews: json.total_views || { current: 0, previous: 0, growth_percentage: 0 },
     totalUsers: json.total_users || { current: 0, previous: 0, growth_percentage: 0 },
     totalSubscribers: json.total_subscribers || { current: 0, previous: 0, growth_percentage: 0 },
-    totalContent: json.total_content || { total: 0, published: 0, drafts: 0, recently_added: 0 },
+    totalContent: {
+      total: json.total_content?.total ?? 0,
+      published: json.total_content?.published ?? 0,
+      drafts: json.total_content?.drafts ?? 0,
+      scheduled: json.total_content?.scheduled ?? 0,
+      recently_added: json.total_content?.recently_added ?? 0,
+    },
   };
 }
 

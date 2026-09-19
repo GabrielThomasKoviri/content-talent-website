@@ -219,7 +219,7 @@ export default function Dashboard() {
 
   // Resolved video breakdown counts
   const publishedCount = stats?.totalContent?.published !== undefined ? stats.totalContent.published : contentCounts.published;
-  const scheduledCount = (stats?.totalContent as any)?.scheduled !== undefined ? (stats?.totalContent as any).scheduled : contentCounts.scheduled;
+  const scheduledCount = stats?.totalContent?.scheduled !== undefined ? stats.totalContent.scheduled : contentCounts.scheduled;
   const draftsCount = stats?.totalContent?.drafts !== undefined ? stats.totalContent.drafts : contentCounts.drafts;
 
   // KPI cards aligned with FastAPI GrowthMetric schema (Bress flat aesthetic)

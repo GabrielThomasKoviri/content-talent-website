@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
-import { FolderTree, Plus, Edit, Trash2, ArrowUp, ArrowDown, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { FolderTree, Plus, Edit, Trash2, ArrowUp, ArrowDown, Loader2, AlertCircle, RefreshCw, Upload, Image as ImageIcon } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "../components/ui/dialog";
@@ -13,6 +13,7 @@ import {
   getCategories,
   createCategory,
   updateCategory,
+  uploadCategoryThumbnail,
   deleteCategory,
   reorderCategories,
   ApiCategory,
@@ -27,25 +28,37 @@ function CategoryDialog({
   open: boolean;
   onClose: () => void;
   category?: ApiCategory | null;
-  onSave: (data: { name: string; description: string; icon: string; color: string }) => Promise<void>;
+  onSave: (data: { name: string; description: string; color: string; file?: File | null }) => Promise<void>;
 }) {
   const isEdit = !!category;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("");
-  const [color, setColor] = useState("#8b5cf6");
+  const [color, setColor] = useState("#3b82f6");
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (open) {
       setName(category?.name ?? "");
       setDescription(category?.description ?? "");
-      setIcon(category?.icon ?? "📁");
-      setColor(category?.color ?? "#8b5cf6");
+      setColor(category?.color ?? "#3b82f6");
+      setThumbnailFile(null);
+      setThumbnailPreview(category?.thumbnailUrl ?? null);
       setError(null);
     }
   }, [open, category]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setThumbnailFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setThumbnailPreview(objectUrl);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,8 +72,8 @@ function CategoryDialog({
       await onSave({
         name: name.trim(),
         description: description.trim(),
-        icon: icon.trim() || "📁",
-        color: color.trim() || "#8b5cf6",
+        color: color.trim() || "#3b82f6",
+        file: thumbnailFile,
       });
       onClose();
     } catch (err: any) {
@@ -78,7 +91,7 @@ function CategoryDialog({
             {isEdit ? `Edit "${category?.name}"` : "Create New Category"}
           </DialogTitle>
           <DialogDescription className="text-slate-500 text-sm mt-1">
-            {isEdit ? "Update category attributes and visual identifier." : "Add a new content category for your media catalog."}
+            {isEdit ? "Update category attributes and thumbnail image." : "Add a new content category for your media catalog."}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,31 +124,62 @@ function CategoryDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Category Thumbnail Image & Theme Color */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Icon (Emoji)</Label>
-              <Input
-                placeholder="💻"
-                maxLength={4}
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="bg-white border-slate-200 text-slate-900 text-center rounded-xl"
+              <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Category Image / Logo</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                onChange={handleFileChange}
+                className="hidden"
               />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="h-24 border-2 border-dashed border-slate-200 hover:border-slate-400 rounded-xl bg-slate-50/70 hover:bg-slate-100/60 transition-all cursor-pointer flex flex-col items-center justify-center p-2 text-center group relative overflow-hidden"
+              >
+                {thumbnailPreview ? (
+                  <>
+                    <img
+                      src={thumbnailPreview}
+                      alt="Category Preview"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-semibold rounded-lg">
+                      <Upload className="h-4 w-4 mb-1" />
+                      <span>Change Image</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-2 rounded-lg bg-white shadow-2xs text-slate-500 group-hover:text-slate-900 group-hover:scale-105 transition-all mb-1">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700">Click to upload image</span>
+                    <span className="text-[10px] text-slate-400">PNG, JPG, WebP up to 5MB</span>
+                  </>
+                )}
+              </div>
             </div>
+
             <div>
               <Label className="text-sm font-semibold text-slate-800 block mb-1.5">Theme Color</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-12 h-10.5 p-1 bg-white border-slate-200 cursor-pointer rounded-xl"
-                />
-                <Input
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="bg-white border-slate-200 text-slate-900 font-mono text-sm rounded-xl"
-                />
+              <div className="h-24 flex flex-col justify-between border border-slate-200/80 rounded-xl p-3 bg-slate-50/50">
+                <p className="text-xs text-slate-500">Pick an accent color:</p>
+                <div className="flex items-center gap-2 mt-auto">
+                  <Input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-12 h-9 p-1 bg-white border-slate-200 cursor-pointer rounded-xl"
+                  />
+                  <Input
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="bg-white border-slate-200 text-slate-900 font-mono text-xs rounded-xl h-9"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -145,16 +189,20 @@ function CategoryDialog({
             <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Category Badge Preview</p>
             <div className="flex items-center gap-3">
               <div
-                className="h-10 w-10 rounded-xl flex items-center justify-center text-xl shadow-xs border border-slate-200/80"
-                style={{ backgroundColor: `${color}20` }}
+                className="h-11 w-11 rounded-xl overflow-hidden shadow-xs border border-slate-200/80 shrink-0 flex items-center justify-center bg-slate-100"
+                style={{ backgroundColor: thumbnailPreview ? undefined : `${color}20` }}
               >
-                {icon || "📁"}
+                {thumbnailPreview ? (
+                  <img src={thumbnailPreview} alt={name || "Preview"} className="h-full w-full object-cover" />
+                ) : (
+                  <FolderTree className="h-5 w-5" style={{ color }} />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-slate-900 truncate">{name || "Category Name"}</div>
                 <div className="text-xs text-slate-500 truncate">{description || "Category description will appear here..."}</div>
               </div>
-              <div className="h-4 w-4 rounded-full border border-slate-300 shadow-xs" style={{ backgroundColor: color }} />
+              <div className="h-4 w-4 rounded-full border border-slate-300 shadow-xs shrink-0" style={{ backgroundColor: color }} />
             </div>
           </div>
 
@@ -210,15 +258,41 @@ export default function Categories() {
     fetchCategoriesList();
   }, []);
 
-  const handleCreateCategory = async (data: { name: string; description: string; icon: string; color: string }) => {
-    const created = await createCategory(data);
-    setCategories((prev) => [...prev, created]);
+  const handleCreateCategory = async (data: { name: string; description: string; color: string; file?: File | null }) => {
+    const created = await createCategory({
+      name: data.name,
+      description: data.description,
+      color: data.color,
+    });
+    let finalCategory = created;
+    if (data.file) {
+      try {
+        const uploadRes = await uploadCategoryThumbnail(created.id, data.file);
+        finalCategory = { ...created, thumbnailUrl: uploadRes.thumbnailUrl };
+      } catch (err) {
+        console.error("Failed to upload category thumbnail:", err);
+      }
+    }
+    setCategories((prev) => [...prev, finalCategory]);
   };
 
-  const handleUpdateCategory = async (data: { name: string; description: string; icon: string; color: string }) => {
+  const handleUpdateCategory = async (data: { name: string; description: string; color: string; file?: File | null }) => {
     if (!editCategory) return;
-    const updated = await updateCategory(editCategory.id, data);
-    setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    const updated = await updateCategory(editCategory.id, {
+      name: data.name,
+      description: data.description,
+      color: data.color,
+    });
+    let finalCategory = updated;
+    if (data.file) {
+      try {
+        const uploadRes = await uploadCategoryThumbnail(editCategory.id, data.file);
+        finalCategory = { ...updated, thumbnailUrl: uploadRes.thumbnailUrl };
+      } catch (err) {
+        console.error("Failed to upload category thumbnail:", err);
+      }
+    }
+    setCategories((prev) => prev.map((c) => (c.id === finalCategory.id ? finalCategory : c)));
   };
 
   const handleDeleteCategory = async () => {
@@ -378,12 +452,16 @@ export default function Categories() {
                     </button>
                   </div>
 
-                  {/* Icon & Color Badge */}
+                  {/* Category Thumbnail / Logo */}
                   <div
-                    className="h-11 w-11 rounded-xl flex items-center justify-center text-xl shadow-xs border border-slate-200/80 shrink-0"
-                    style={{ backgroundColor: `${cat.color}20` }}
+                    className="h-11 w-11 rounded-xl overflow-hidden shadow-xs border border-slate-200/80 shrink-0 flex items-center justify-center bg-slate-100"
+                    style={{ backgroundColor: cat.thumbnailUrl ? undefined : `${cat.color}20` }}
                   >
-                    {cat.icon || "📁"}
+                    {cat.thumbnailUrl ? (
+                      <img src={cat.thumbnailUrl} alt={cat.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <FolderTree className="h-5 w-5" style={{ color: cat.color }} />
+                    )}
                   </div>
 
                   {/* Category Metadata */}
